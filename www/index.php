@@ -43,7 +43,21 @@ echo $contents; } ?>
 
 <!-- end of project description -->
 
-<p> No content added. </p>
+<h1><strong>t</strong>hreshold <strong>ex</strong>cesses and <strong>mu</strong>ltivariate <strong>ex</strong>tremes</h1>
+
+<p> This project will produce an R package, <emph>texmex</emph>,
+for modelling extreme values
+using generalized Pareto distributions. Inlcuded will be maximum likelihood
+and penalized likelihood (maximum a posteriori) estimation for threshold
+exceedences, including a formula interface. Also included will be a fully
+Bayesian estimation algorithm using MCMC. Model objects will have methods
+for plotting and summarizing the models. </p>
+
+<p> Also included will be an implementation of the Heffernan-Tawn (RSS B, 2004)
+approach to conditional multivariate extreme value modelling, again with plot
+and other methods.</p>
+
+
 
 <p> The <strong>project summary page</strong> you can find <a href="http://<?php echo $domain; ?>/projects/<?php echo $group_name; ?>/"><strong>here</strong></a>. </p>
 
