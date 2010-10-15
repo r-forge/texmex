@@ -21,7 +21,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
 	<link href="<?php echo $themeroot; ?>styles/estilo1.css" rel="stylesheet" type="text/css" />
   </head>
 
-<body>
+<body style="background-color:FFFF99; color:0000FF">
 
 <!-- R-Forge Logo -->
 <table border="0" width="100%" cellspacing="0" cellpadding="0">
@@ -43,9 +43,9 @@ echo $contents; } ?>
 
 <!-- end of project description -->
 
-<h1><strong>t</strong>hreshold <strong>ex</strong>cesses and <strong>mu</strong>ltivariate <strong>ex</strong>tremes</h1>
+<h1><u><tt>t</tt></u>hreshold <u><tt>ex</tt></u>cesses and <u><tt>mu</tt></u>ltivariate <u><tt>ex</tt></u>tremes</h1>
 
-<p> This project will produce an R package, <emph>texmex</emph>,
+<p> This project will produce an R package, <tt>texmex</tt>,
 for modelling extreme values
 using generalized Pareto distributions. Inlcuded will be maximum likelihood
 and penalized likelihood (maximum a posteriori) estimation for threshold
