@@ -43,7 +43,7 @@ echo $contents; } ?>
 
 <!-- end of project description -->
 
-<h1><u><tt>t</tt></u>hreshold <u><tt>ex</tt></u>cesses and <u><tt>mu</tt></u>ltivariate <u><tt>ex</tt></u>tremes</h1>
+<h1><u><tt>t</tt></u>hreshold <u><tt>ex</tt></u>ceedences and <u><tt>mu</tt></u>ltivariate <u><tt>ex</tt></u>tremes</h1>
 
 <p> This project will produce an R package, <tt>texmex</tt>,
 for modelling extreme values
@@ -53,11 +53,41 @@ exceedences, including a formula interface. Also included will be a fully
 Bayesian estimation algorithm using MCMC. Model objects will have methods
 for plotting and summarizing the models. </p>
 
+<table>
+  <tbody>
+    <tr>
+      <td>
+          <image src="bwinter.png" alt="Posterior distributions and diagnostic plots"/>
+      </td>
+      <td>
+          <image src="pWinter.png" alt="Predictions from a conditional multivariate extreme value model"/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 <p> Also included will be an implementation of the Heffernan-Tawn (RSS B, 2004)
 approach to conditional multivariate extreme value modelling, again with plot
 and other methods.</p>
 
+<p>We intend to include a comprehensive suite of test scripts.</p>
 
+<p>The code currently included has been written by Janet E. Heffernan and
+Harry Southworth, with additional material by Ioannis Papastathopoulos.
+The <tt>chi</tt> functions are wrapped versions of functions appearing
+in the <tt>evd</tt> package, maintained by Alec Stephenson.</p>
+
+<p><strong>There are several known major bugs and problems.</strong>
+This project is currently closed to new developers. Once we get a version
+out of beta, please feel free to ask to join.</p>
+
+
+
+
+<h3>References</h3>
+<p>J. E. Heffernan and J. A. Tawn, A conditional approach to multivariate
+extreme values, Journal of the Royal Statistical Society (B), 66, 
+497 - 546, 2004</p>
 
 <p> The <strong>project summary page</strong> you can find <a href="http://<?php echo $domain; ?>/projects/<?php echo $group_name; ?>/"><strong>here</strong></a>. </p>
 
