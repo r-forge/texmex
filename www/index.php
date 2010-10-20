@@ -47,6 +47,11 @@ echo $contents; } ?>
 
 <h1><u><tt>t</tt></u>hreshold <u><tt>ex</tt></u>ceedences and <u><tt>m</tt></u>ultivariate <u><tt>ex</tt></u>tremes</h1>
 
+<table>
+  <tbody>
+   <tr>
+      <td valign="top" align="left">
+
 <p> This project will produce an R package, <tt>texmex</tt>,
 for modelling extreme values
 using generalized Pareto distributions. Inlcuded will be maximum likelihood
@@ -55,26 +60,20 @@ exceedences, including a formula interface. Also included will be a fully
 Bayesian estimation algorithm using MCMC. Model objects will have methods
 for plotting and summarizing the models. </p>
 
-<!-- <table>
-  <tbody>
-    <tr>
-      <td> -->
-          <img src="bwinter.png" alt="Posterior distributions and diagnostic plots"/>
-<!--      </td>
-      <td> -->
-
-<!--      </td>
-    </tr>
-  </tbody>
-</table> -->
-
 <p> Also included will be an implementation of the Heffernan-Tawn (RSS B, 2004)
 approach to conditional multivariate extreme value modelling, again with plot
 and other methods.</p>
 
-<p>We intend to include a comprehensive suite of test scripts.</p>
+      </td><td valign = "top">
+          <img src="bwinter.png" alt="Posterior distributions and diagnostic plots"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
 
-          <img src="pWinter.png" alt="Predictions from a conditional multivariate extreme value model"/>
+
+
+<p>We intend to include a comprehensive suite of test scripts.</p>
 
 <p>The code currently included has been written by Janet E. Heffernan and
 Harry Southworth, with additional material by Ioannis Papastathopoulos.
@@ -85,15 +84,23 @@ in the <tt>evd</tt> package, maintained by Alec Stephenson.</p>
 This project is currently closed to new developers. Once we get a version
 out of beta, please feel free to ask to join.</p>
 
-
-
-
 <h3>References</h3>
 <p>J. E. Heffernan and J. A. Tawn, A conditional approach to multivariate
 extreme values, Journal of the Royal Statistical Society (B), 66, 
 497 - 546, 2004</p>
 
 <p> The <strong>project summary page</strong> you can find <a href="http://<?php echo $domain; ?>/projects/<?php echo $group_name; ?>/"><strong>here</strong></a>. </p>
+
+
+      </td><td>
+          <img src="pWinter.png" alt="Predictions from a conditional multivariate extreme value model"/>
+      </td></tr>
+  </tbody>
+</table>
+
+
+
+
 
 </body>
 </html>
