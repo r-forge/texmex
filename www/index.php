@@ -78,7 +78,9 @@ and other methods.</p>
 <p>The code currently included has been written by Janet E. Heffernan and
 Harry Southworth, with additional material by Ioannis Papastathopoulos.
 The <tt>chi</tt> functions are wrapped versions of functions appearing
-in the <tt>evd</tt> package, maintained by Alec Stephenson.</p>
+in the <tt>evd</tt> package, maintained by Alec Stephenson. Some of the
+code is based on code originally written by Stuart Coles and which appears
+in the <tt>ismev</tt> package.</p>
 
 <p><strong>There are several known major bugs and problems.</strong>
 This project is currently closed to new developers. Once we get a version
