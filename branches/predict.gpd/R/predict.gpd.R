@@ -205,23 +205,50 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 ################################################################################
 ## bgpd
 
-predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000, unique.=TRUE){
+predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000, alpha=.050, unique.=TRUE){
     theCall <- match.call()
-    
-    type <- match.arg(type)
-    
+        
     res <- switch(type,
-                  "return level" = rl.bgpd(object, M),
-                  "parameters" = cobgpd(object, newdata)
+                  "rl" = , "return level" = rl.bgpd(object, M),
+                  "lp" = , "link" = predict.link.bgpd(object, newdata)
                   )
-    res <- list(rl = res, call = theCall)
-    oldClass(res) <- "returnLevel"
     res
 }
 
-predict.link.bgpd <- function(object, newdata, se.fit, ci.fit){
+predict.link.bgpd <- function(object, newdata, se.fit, ci.fit, apha=.050, unique.=TRUE){
+    if (!is.null(newdata)){
+        xi.fo <- object$call$xi
+        phi.fo <- object$call$phi
+        X.xi <- if (!is.null(xi.fo)){ model.matrix(as.formula(xi.fo), newdata) }
+                else { matrix(1, nrow(newdata)) }
+        X.phi <- if (!is.null(phi.fo)){ model.matrix(as.formula(object$call$phi), newdata) }
+                 else { matrix(1, nrow(newdata)) }
+    }
 
+    else {
+        X.xi <- object$X.xi
+        X.phi <- object$X.phi
+    }
 
+    if (unique.){
+        u <- (1 - duplicated(X.phi)) + (1 - duplicated(X.xi)) > 0
+        X.xi <- cbind(X.xi[u, ])
+        X.phi <- cbind(X.phi[u, ])
+    }
+
+    phi <- cbind(object$param[, 1:ncol(X.phi)])
+    xi <- cbind(object$param[, (ncol(X.phi) + 1):(ncol(X.phi) + ncol(X.xi))])
+    
+    res <- lapply(1:nrow(X.xi),
+                  function(i, phi, xi, Xphi, Xxi){
+#browser()
+                      phi <- rowSums(t(t(phi) * c(Xphi[i, ])))
+                      xi <- rowSums(t(t(xi) * c(Xxi[i, ])))
+                      cbind(phi=phi, xi=xi)
+                    }, phi=phi, xi=xi, Xphi=X.phi, Xxi=X.xi)
+
+    res <- t(sapply(res, function(x){ apply(x, 2, mean) }))
+    res
 }
 
 rl.bgpd <- function(object, M){
