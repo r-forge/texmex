@@ -205,17 +205,23 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 ################################################################################
 ## bgpd
 
-predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000, alpha=.050, unique.=TRUE){
+predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000,
+                         se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE, all=FALSE){
     theCall <- match.call()
         
     res <- switch(type,
-                  "rl" = , "return level" = rl.bgpd(object, M),
-                  "lp" = , "link" = predict.link.bgpd(object, newdata)
+                  "rl" = , "return level" = rl.bgpd(object, M=M, newdata=newdata,
+                                                    se.fit=se.fit, ci.fit=ci.fit,
+                                                    alpha=alpha, unique.=unique., all=all),
+                  "lp" = , "link" = predict.link.bgpd(object, newdata=newdata,
+                                                      se.fit=se.fit, ci.fit=ci.fit,
+                                                      alpha=alpha, unique.=unique., all=all)
                   )
     res
 }
 
-predict.link.bgpd <- function(object, newdata, se.fit, ci.fit, apha=.050, unique.=TRUE){
+predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
+                              alpha=.050, unique.=TRUE, all=FALSE){
     if (!is.null(newdata)){
         xi.fo <- object$call$xi
         phi.fo <- object$call$phi
@@ -238,16 +244,33 @@ predict.link.bgpd <- function(object, newdata, se.fit, ci.fit, apha=.050, unique
 
     phi <- cbind(object$param[, 1:ncol(X.phi)])
     xi <- cbind(object$param[, (ncol(X.phi) + 1):(ncol(X.phi) + ncol(X.xi))])
-    
+
+    # Get point estimates (means)
     res <- lapply(1:nrow(X.xi),
                   function(i, phi, xi, Xphi, Xxi){
-#browser()
                       phi <- rowSums(t(t(phi) * c(Xphi[i, ])))
                       xi <- rowSums(t(t(xi) * c(Xxi[i, ])))
                       cbind(phi=phi, xi=xi)
                     }, phi=phi, xi=xi, Xphi=X.phi, Xxi=X.xi)
 
-    res <- t(sapply(res, function(x){ apply(x, 2, mean) }))
+    ############################################################################
+    ## Hard part should be done now. Just need to summarize
+
+    if (ci.fit){
+        sumfun <- function(x){ c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x)) }
+
+        res <- t(sapply(res, function(x, fun){ apply(x, 2, sumfun) }, fun=sumfun))
+        nms <- c(paste(alpha/2, "%", sep = ""),
+                 "50%", paste(1-alpha/2, "%", sep = ""),
+                 "Mean")
+
+        colnames(res) <- c(paste("phi:", nms), paste("xi:", nms))
+    }
+    else if (se.fit){ warning("se.fit not implemented - ignoring") }
+    else if (all){ res <- res }
+    else { # Just point estimates
+        res <- t(sapply(res, function(x){ apply(x, 2, mean) }))
+    }
     res
 }
 
