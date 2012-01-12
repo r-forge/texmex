@@ -15,6 +15,8 @@
 # predict.link.bootgpd
 # rl.bootgpd
 
+## TODO: Need to add rownames (or something) resulting from using unique() on
+##       the design matrices.
 
 ################################################################################
 ## gpd
@@ -22,26 +24,30 @@
 predict.gpd <-
     # Get predictions for a gpd object. These can either be the linear predictors
     # or return levels.
-function(object, newdata=NULL, type=c("return level", "link"), se.fit=FALSE, ci.fit=FALSE, M=1000, alpha=.050){
+function(object, newdata=NULL, type="return level", se.fit=FALSE,
+         ci.fit=FALSE, M=1000, alpha=.050, unique.=TRUE){
     theCall <- match.call()
     
-    type <- match.arg(type)
+#    type <- match.arg(type)
     
     res <- switch(type,
-                  "return level" = rl.gpd(object, M, newdata),
-                  "link" = predict.link.gpd(object, newdata, se.fit, ci.fit, alpha)
+                  "rl"=, "return level" = rl.gpd(object, M, newdata,
+                                                 se.fit=se.fit, ci.fit=ci.fit,
+                                                 alpha=alpha, unique.=unique.),
+                  "lp" =,"link" = predict.link.gpd(object, newdata, se.fit,
+                                                   ci.fit, alpha, unique.=unique.)
                   )
     res
 }
 
 ## Linear predictor functions for GPD
 
-predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, alpha=.050){
+predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
+                             alpha=.050, unique.=TRUE, full.cov=FALSE){
 
     if (!is.null(newdata)){
         xi.fo <- object$call$xi
         phi.fo <- object$call$phi
-
         X.xi <- if (!is.null(xi.fo)){ model.matrix(as.formula(xi.fo), newdata) }
                 else { matrix(1, nrow(newdata)) }
         X.phi <- if (!is.null(phi.fo)){ model.matrix(as.formula(object$call$phi), newdata) }
@@ -51,6 +57,12 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, a
     else {
         X.xi <- object$X.xi
         X.phi <- object$X.phi
+    }
+
+    if (unique.){
+        u <- (1 - duplicated(X.phi)) + (1 - duplicated(X.xi)) > 0
+        X.xi <- cbind(X.xi[u, ])
+        X.phi <- cbind(X.phi[u, ])
     }
 
     phi <- c(object$coefficients[1:ncol(X.phi)] %*% t(X.phi))
@@ -76,12 +88,31 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, a
 
     if (se.fit){
         if (!ci.fit){ # Because if ci.fit, phi.se and xi.se already exist
-            phi.se <- sqrt(rowSums((X.phi %*% phi.cov) * object$X.phi))
+            phi.cov <- as.matrix(object$cov[1:ncol(X.phi), 1:ncol(X.phi)])
+            xi.cov <- as.matrix(object$cov[(ncol(X.phi) + 1):length(object$coefficients), (ncol(X.phi) + 1):length(object$se)])
+            phi.se <- sqrt(rowSums((X.phi %*% phi.cov) * X.phi))
             xi.se <- sqrt(rowSums((X.xi %*% xi.cov) * X.xi))
         }
         res <- cbind(res, phi.se, xi.se)
     } # Close if(se.fit
+    
+    if (full.cov){ # Covariance of (phi, xi) for each unique (phi, xi) pair
+        phi.cov <- as.matrix(object$cov[1:ncol(X.phi), 1:ncol(X.phi)])
+        xi.cov <- as.matrix(object$cov[(ncol(X.phi) + 1):length(object$coefficients), (ncol(X.phi) + 1):length(object$se)])
 
+        covar <- rep(0, nrow(X.xi))
+        for(k in 1:length(covar)){
+            for (i in 1:ncol(X.phi)){
+                for (j in 1:ncol(X.xi)){
+                    covar[k] <- covar[k] + X.phi[k, i] * X.xi[k, j] * object$cov[i, j]
+                } # Close for j
+            } # Close for i
+        } # Close for k
+        phi.var <- rowSums((X.phi %*% phi.cov) * X.phi)
+        xi.var <- rowSums((X.xi %*% xi.cov) * X.xi)
+        
+        res <- list(link=res, cov=list(phi.var=phi.var, xi.var=xi.var, covariances=covar))
+    }
     res
 }
 
@@ -93,13 +124,13 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, a
 ## Will want to get return levels when using GEV rather than GPD, so make
 ## rl generic
 
-rl <- function(object, M, newdata, se.fit=FALSE, ci.fit=FALSE, alpha=.050, ...){
+rl <- function(object, M, newdata, se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE, ...){
     UseMethod("rl")
 }
 
 gpd.delta <- function(a, m){
         # This is not exact if a prior (penalty) function is used, but
-        # the CI is approximate anyway.
+        # the CI is approxima#te anyway.
         
     out <- matrix(0, nrow=3, ncol=length(m))
         
@@ -116,37 +147,55 @@ gpd.delta <- function(a, m){
    out
 } 
 
-rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, alpha=.050){
-    co <- predict.link.gpd(object, newdata=newdata)
-    co <- cbind(rep(object$rate, nrow(co)), co)    
-
-    if (missing(newdata)){ co <- unique(co) }
-
-    res <- object$threshold + (exp(co[,1]) / co[,2]) * (object$rate^co[,2] - 1)
+rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
+                   alpha=.050, unique.=TRUE){
+    co <- predict.link.gpd(object, newdata=newdata, unique.=unique., full.cov=TRUE)
+    covs <- co[[2]] # List of covariance matrices
+    co <- co[[1]]
+    
+    res <- object$threshold + exp(co[,1]) / co[,2] * ((M * object$rate)^co[,2] -1)
     res <- cbind(RL=res)
 
     getse <- function(o, co, M){
-        dxm <- t(apply(co, 1, gpd.delta, m=M))
-        V <- matrix(c(object$rate * (1 - object$rate)/length(mod$y), 0, 0,
-                      0, object$cov[1,],
-                      0, object$cov[2,]), ncol = 3)
+#        dxm <- t(apply(co, 1, gpd.delta, m=M))
+        dxm <- lapply(split(co, 1:nrow(co)), gpd.delta, m=M)
 
-        # Get (4.15) of Coles, page 82, adjusted for phi = log(sigma)
-        sqrt(mahalanobis(dxm, center=c(0, 0, 0), cov=V, inverted=TRUE))
+        V <- lapply(1:nrow(co),
+                    function(i, x, rate, n){
+                        # Construct covariance matrix
+                        cov <- matrix(c(x[[1]][i], rep(x[[3]][i], 2), x[[2]][i]), ncol=2)
+                        matrix(c(rate * (1 - rate) / n, 0, 0,
+                               0, cov[1,], 
+                               0, cov[2,]), ncol=3)
+                    }, rate = o$rate, n = length(o$y) / o$rate, x=covs)
+
+                    # Get (4.15) of Coles, page 82, adjusted for phi = log(sigma)
+        se <- sapply(1:length(V),
+                     function(i, dxm, V){
+                        V <- V[[i]]; dxm <- c(dxm[[i]])
+                        sqrt(mahalanobis(dxm, center=c(0, 0, 0), cov=V, inverted=TRUE))
+                     }, dxm=dxm, V=V)
+        se
     }
 
     if (ci.fit){
+        co <- cbind(rep(object$rate, nrow(co)), co)
         se <- getse(object, co, M)
         lo <- res - qnorm(1 - alpha/2)*se
         hi <- res + qnorm(1 - alpha/2)*se
 
         res <- cbind(res, lo=lo, hi=hi)
+        colnames(res) <- c("RL", paste(100*alpha/2, "%", sep = ""),
+                                 paste(100*(1 - alpha/2), "%", sep = ""))
+        rownames(res) <- NULL
     } # Close if (ci.fit
 
     if (se.fit){
         if (!ci.fit){
+            co <- cbind(rep(object$rate, nrow(co)), co)
             se <- getse(object, co, M)
         }
+        cnr <- colnames(res)
         res <- cbind(res, se=se)
     }
 
@@ -156,7 +205,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, alp
 ################################################################################
 ## bgpd
 
-predict.bgpd <- function(object, newdata=NULL, type=c("return level", "link"), M=1000){
+predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000, unique.=TRUE){
     theCall <- match.call()
     
     type <- match.arg(type)
