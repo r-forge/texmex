@@ -206,22 +206,25 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 ## bgpd
 
 predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000,
-                         se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE, all=FALSE){
+                         se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE,
+                         all=FALSE, sumfun=NULL){
     theCall <- match.call()
         
     res <- switch(type,
                   "rl" = , "return level" = rl.bgpd(object, M=M, newdata=newdata,
                                                     se.fit=se.fit, ci.fit=ci.fit,
-                                                    alpha=alpha, unique.=unique., all=all),
+                                                    alpha=alpha, unique.=unique., all=all,
+                                                    sumfun=sumfun),
                   "lp" = , "link" = predict.link.bgpd(object, newdata=newdata,
                                                       se.fit=se.fit, ci.fit=ci.fit,
-                                                      alpha=alpha, unique.=unique., all=all)
+                                                      alpha=alpha, unique.=unique., all=all,
+                                                      sumfun=sumfun)
                   )
     res
 }
 
 predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
-                              alpha=.050, unique.=TRUE, all=FALSE){
+                              alpha=.050, unique.=TRUE, all=FALSE, sumfun=NULL){
     if (!is.null(newdata)){
         xi.fo <- object$call$xi
         phi.fo <- object$call$phi
@@ -257,14 +260,23 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     ## Hard part should be done now. Just need to summarize
 
     if (ci.fit){
-        sumfun <- function(x){ c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x)) }
+        if (is.null(sumfun)){
+            sumfun <- function(x){
+                c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x))
+            }
+            neednames <- TRUE
+        }
+        else { neednames <- FALSE }
 
         res <- t(sapply(res, function(x, fun){ apply(x, 2, sumfun) }, fun=sumfun))
-        nms <- c(paste(alpha/2, "%", sep = ""),
-                 "50%", paste(1-alpha/2, "%", sep = ""),
-                 "Mean")
+        
+        if (neednames){
+            nms <- c(paste(alpha/2, "%", sep = ""),
+                    "50%", paste(1-alpha/2, "%", sep = ""),
+                    "Mean")
 
-        colnames(res) <- c(paste("phi:", nms), paste("xi:", nms))
+            colnames(res) <- c(paste("phi:", nms), paste("xi:", nms))
+        }
     }
     else if (se.fit){ warning("se.fit not implemented - ignoring") }
     else if (all){ res <- res }
@@ -275,6 +287,11 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 }
 
 rl.bgpd <- function(object, M){
+    co <- predict.link.bgpd(object, newdata=newdata, unique.=unique., all=TRUE)
+    
+    rl <- function(u, phi, xi, M, rate){
+        u + exp(phi) / xi * ((M * rate)^xi -1)
+    }
 
 
 }
