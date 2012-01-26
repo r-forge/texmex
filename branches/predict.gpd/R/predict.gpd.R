@@ -317,6 +317,10 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
         if (ci.fit){
             res <- t(apply(res, 2, function(x){ c(Mean=mean(x), quantile(x, c(alpha/2, 1 - alpha/2))) }))
         }
+        else if (se.fit){
+            warning("se.fit not implemented")
+            res <- apply(res, 2, mean)
+        }
         else if (!all){ res <- apply(res, 2, mean) }
         res
     }
@@ -330,26 +334,45 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
 ################################################################################
 ## bootgpd
 
-predict.bootgpd <- function(object, type=c("return level", "link"), M=1000){
+predict.bootgpd <- function(object, newdata=NULL, type="return level",
+                            unique.=TRUE, ci.fit=FALSE, se.fit=FALSE, M=1000,
+                            all=FALSE, alpha=.050){
     theCall <- match.call()
 
-    type <- match.arg(type)
-
     res <- switch(type,
-                  "rl" = , "return level" = rl.bgpd(object, M),
-                  "lp" = , "link" = cobgpd(object, newdata)
+                  "rl" = , "return level" = rl.bootgpd(object, M, newdata=newdata,
+                                                       unique.=TRUE,
+                                                       se.fit=se.fit, ci.fit=ci.fit,
+                                                       all=FALSE, alpha=alpha),
+                  "lp" = , "link" = predict.link.bootgpd(object, newdata=newdata,
+                                                         unique.=TRUE,
+                                                         se.fit=se.fit, ci.fit=ci.fit,
+                                                         all=FALSE, alpha=alpha)
                   )
     res
 
 }
-predict.link.bootgpd <- function(object, newdata, se.fit, ci.fit){
+predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
+                                 unique.=TRUE, all=FALSE, alpha=.050){
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
+    names(bb) <- c("call", "param", "original", "map")
+    bb$X.phi <- bb$map$X.phi
+    bb$X.xi <- bb$map$X.xi
+    bb$threshold <- bb$map$threshold
+    predict.link.bgpd(bb, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit)
 }
 
-rl.bootgpd <- function(object, M){
-
-
+rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=FALSE,
+                       unique.=TRUE, alpha=alpha){
+    # This should just be the same as for a bgpd object, but some
+    # names and stuff are different.
+    names(bb) <- c("call", "param", "original", "map")
+    bb$X.phi <- bb$map$X.phi
+    bb$X.xi <- bb$map$X.xi
+    bb$threshold <- bb$map$threshold
+    rl.bgpd(bb, M=M, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,
+            alpha=alpha)
 }
 
 
