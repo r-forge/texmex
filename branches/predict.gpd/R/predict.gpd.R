@@ -284,8 +284,8 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
         res <- t(sapply(res, function(x, fun){ apply(x, 2, sumfun) }, fun=sumfun))
         
         if (neednames){
-            nms <- c(paste(alpha/2, "%", sep = ""),
-                    "50%", paste(1-alpha/2, "%", sep = ""),
+            nms <- c(paste(100*alpha/2, "%", sep = ""),
+                    "50%", paste(100*(1-alpha/2), "%", sep = ""),
                     "Mean")
 
             colnames(res) <- c(paste("phi:", nms), paste("xi:", nms))
@@ -299,13 +299,31 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     res
 }
 
-rl.bgpd <- function(object, M){
-    co <- predict.link.bgpd(object, newdata=newdata, unique.=unique., all=TRUE)
-    
-    rl <- function(u, phi, xi, M, rate){
-        u + exp(phi) / xi * ((M * rate)^xi -1)
-    }
+rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
+                    ci.fit=FALSE, all=FALSE, alpha=.050, sumfun=NULL){
+    co <- predict.link.bgpd(object, newdata=newdata, unique.=unique., all=TRUE, sumfun=NULL)
 
+    bgpdrl <- function(o, u, theta, m){
+        res <- u + exp(o[, 1]) / o[, 2] *((m * theta)^o[, 2] -1) 
+        cbind(RL=res)
+    }
+    
+    # co is (probably) a list with one element for each unique item in
+    # new data. Need to loop over vector M and the elements of co
+    
+    getrl <- function( co, u, theta, m, ci.fit, alpha, all){
+        res <- sapply(co, bgpdrl, u=u, theta=theta, m=m)
+
+        if (ci.fit){
+            res <- t(apply(res, 2, function(x){ c(Mean=mean(x), quantile(x, c(alpha/2, 1 - alpha/2))) }))
+        }
+        else if (!all){ res <- apply(res, 2, mean) }
+        res
+    }
+    
+    res <- lapply(M, getrl, co=co, u=object$threshold, theta=object$map$rate, ci.fit=ci.fit, alpha=alpha, all)
+    names(res) <- paste("M.", M, sep = "")
+    res
 
 }
 
