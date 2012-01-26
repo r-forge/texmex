@@ -34,7 +34,7 @@ bootgpd <- function(x, R=100, trace=10){
         warning("Ratio of bias to standard error is high")
     }
 
-    res <- list(call=theCall, replicates=res, original=coef(x))
+    res <- list(call=theCall, replicates=res, original=coef(x), map=x)
 
     oldClass(res) <- "bootgpd"
     res
