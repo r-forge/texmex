@@ -336,17 +336,15 @@ predict.bootgpd <- function(object, type=c("return level", "link"), M=1000){
     type <- match.arg(type)
 
     res <- switch(type,
-                  "return level" = rl.bgpd(object, M),
-                  "parameters" = cobgpd(object, newdata)
+                  "rl" = , "return level" = rl.bgpd(object, M),
+                  "lp" = , "link" = cobgpd(object, newdata)
                   )
-    res <- list(rl = res, call = theCall)
-    oldClass(res) <- "returnLevel"
     res
 
 }
 predict.link.bootgpd <- function(object, newdata, se.fit, ci.fit){
-
-
+    # This should just be the same as for a bgpd object, but some
+    # names and stuff are different.
 }
 
 rl.bootgpd <- function(object, M){
