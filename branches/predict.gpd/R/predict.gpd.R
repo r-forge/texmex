@@ -129,8 +129,8 @@ rl <- function(object, M, newdata, se.fit=FALSE, ci.fit=FALSE, alpha=.050, uniqu
 }
 
 gpd.delta <- function(a, m){
-        # This is not exact if a prior (penalty) function is used, but
-        # the CI is approxima#te anyway.
+   # This is not exact if a prior (penalty) function is used, but
+   # the CI is approxima#te anyway.
         
     out <- matrix(0, nrow=3, ncol=length(m))
         
@@ -161,14 +161,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     res <- lapply(M, gpdrl,
                   u=object$threshold, theta=object$rate, phi=co[,1], xi=co[,2])
 
-#    res <- object$threshold + exp(co[,1]) / co[,2] * ((M * object$rate)^co[,2] -1)
-#    res <- cbind(RL=res)
-#browser()
-#    wh <- rep(M, ea=nrow(res) / length(M))
-#    res <- split(res, wh)
-
     getse <- function(o, co, M){
-#        dxm <- t(apply(co, 1, gpd.delta, m=M))
         dxm <- lapply(split(co, 1:nrow(co)), gpd.delta, m=M)
 
         V <- lapply(1:nrow(co),
@@ -180,7 +173,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                                0, cov[2,]), ncol=3)
                     }, rate = o$rate, n = length(o$y) / o$rate, x=covs)
 
-                    # Get (4.15) of Coles, page 82, adjusted for phi = log(sigma)
+        # Get (4.15) of Coles, page 82, adjusted for phi = log(sigma)
         se <- sapply(1:length(V),
                      function(i, dxm, V){
                         V <- V[[i]]; dxm <- c(dxm[[i]])

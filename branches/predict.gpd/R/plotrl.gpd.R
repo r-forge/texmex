@@ -46,7 +46,6 @@ function(object, alpha = .050,
 
 #    xm <- rl.gpd(object, M=m, ci.fit=TRUE, alpha=alpha)
 
-#if (FALSE){
     xm <- qgpd2(m, exp(a[2]), a[3], u, la)
     dxm <- t(gpd.delta(a = a, m = m))
 
@@ -64,12 +63,6 @@ function(object, alpha = .050,
          xlim=range(m),
          ylim=range(c(xdat, xm[xm > u - 1] + qnorm(1-alpha/2) * sqrt(vxm)[xm > u - 1])), 
          xlab = xlab, ylab = ylab, main = main)
-#} # Close if (FALSE
-
-    plot(m, xm[, 1], log="x", type="n",
-         xlim = range(m), ylim = range(xm),
-         xlab=xlab, ylab=ylab, main=main)
-#return()
 
     # Do polygon and CI lines
     U <- u - abs(u/100)
@@ -111,6 +104,6 @@ function(object, alpha = .050,
     ly <- length(xdat)
     points(1 / (1 - ((n - ly + 1):n) / (n + 1)), sort(xdat), pch=pch, col=col)
     box()
-    invisible()
+    invisible(list(m=m, vxm=vxm))
 }
 
