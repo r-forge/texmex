@@ -152,9 +152,20 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     co <- predict.link.gpd(object, newdata=newdata, unique.=unique., full.cov=TRUE)
     covs <- co[[2]] # List of covariance matrices
     co <- co[[1]]
-    
-    res <- object$threshold + exp(co[,1]) / co[,2] * ((M * object$rate)^co[,2] -1)
-    res <- cbind(RL=res)
+ 
+    gpdrl <- function(u, theta, phi, xi, m){
+        res <- u + exp(phi) / xi *((m * theta)^xi -1) 
+        cbind(RL=res)
+    }
+ 
+    res <- lapply(M, gpdrl,
+                  u=object$threshold, theta=object$rate, phi=co[,1], xi=co[,2])
+
+#    res <- object$threshold + exp(co[,1]) / co[,2] * ((M * object$rate)^co[,2] -1)
+#    res <- cbind(RL=res)
+#browser()
+#    wh <- rep(M, ea=nrow(res) / length(M))
+#    res <- split(res, wh)
 
     getse <- function(o, co, M){
 #        dxm <- t(apply(co, 1, gpd.delta, m=M))
@@ -180,25 +191,34 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 
     if (ci.fit){
         co <- cbind(rep(object$rate, nrow(co)), co)
-        se <- getse(object, co, M)
-        lo <- res - qnorm(1 - alpha/2)*se
-        hi <- res + qnorm(1 - alpha/2)*se
+        ci.fun <- function(i, object, co, M, res, alpha){
+            wh <- res[[i]];
+            se <- getse(object, co, M[i])
+            lo <- wh - qnorm(1 - alpha/2)*se
+            hi <- wh + qnorm(1 - alpha/2)*se
+            wh <- cbind(wh, lo=lo, hi=hi)
 
-        res <- cbind(res, lo=lo, hi=hi)
-        colnames(res) <- c("RL", paste(100*alpha/2, "%", sep = ""),
-                                 paste(100*(1 - alpha/2), "%", sep = ""))
-        rownames(res) <- NULL
+            colnames(wh) <- c("RL", paste(100*alpha/2, "%", sep = ""),
+                              paste(100*(1 - alpha/2), "%", sep = ""))
+            rownames(wh) <- NULL
+            wh
+        } # ci.fun
+        res <- lapply(1:length(M), ci.fun, object=object, co=co, M=M, res=res, alpha=alpha)
     } # Close if (ci.fit
 
     if (se.fit){
-        if (!ci.fit){
-            co <- cbind(rep(object$rate, nrow(co)), co)
-            se <- getse(object, co, M)
-        }
-        cnr <- colnames(res)
-        res <- cbind(res, se=se)
+        if (!ci.fit) { co <- cbind(rep(object$rate, nrow(co)), co) }
+        se.fun <- function(i, object, co, M, res, alpha){
+            wh <- res[[i]];
+            se <- getse(object, co, M[i])
+            wh <- cbind(RL=wh, se.fit=se)
+            rownames(wh) <- NULL
+            wh
+        } # ci.fun
+        res <- lapply(1:length(M), se.fun, object=object, co=co, M=M, res=res, alpha=alpha)
     }
-
+    
+    names(res) <- paste("M.", M, sep = "")
     res
 }
 
