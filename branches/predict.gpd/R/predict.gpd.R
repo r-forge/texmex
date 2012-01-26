@@ -193,7 +193,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 
             colnames(wh) <- c("RL", paste(100*alpha/2, "%", sep = ""),
                               paste(100*(1 - alpha/2), "%", sep = ""))
-            rownames(wh) <- NULL
+            #rownames(wh) <- NULL
             wh
         } # ci.fun
         res <- lapply(1:length(M), ci.fun, object=object, co=co, M=M, res=res, alpha=alpha)
@@ -205,7 +205,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
             wh <- res[[i]];
             se <- getse(object, co, M[i])
             wh <- cbind(RL=wh, se.fit=se)
-            rownames(wh) <- NULL
+            #rownames(wh) <- NULL
             wh
         } # ci.fun
         res <- lapply(1:length(M), se.fun, object=object, co=co, M=M, res=res, alpha=alpha)
@@ -315,8 +315,21 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
         res <- sapply(co, bgpdrl, u=u, theta=theta, m=m)
 
         if (ci.fit){
-            res <- t(apply(res, 2, function(x){ c(Mean=mean(x), quantile(x, c(alpha/2, 1 - alpha/2))) }))
-        }
+            if (is.null(sumfun)){
+                sumfun <- function(x){
+                    c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x))
+                }
+                neednames <- TRUE
+            }
+            else { neednames <- FALSE }
+            res <- t(apply(res, 2, sumfun))
+            if (neednames){
+                colnames(res) <- c(paste(100*alpha/2, "%", sep = ""),
+                                   "50%", paste(100*(1-alpha/2), "%", sep = ""),
+                                   "Mean")
+            }
+
+        } # Close if (ci.fit
         else if (se.fit){
             warning("se.fit not implemented")
             res <- apply(res, 2, mean)
