@@ -48,34 +48,37 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     if (!is.null(newdata)){
         xi.fo <- object$call$xi
         phi.fo <- object$call$phi
-        X.xi <- if (!is.null(xi.fo)){ model.matrix(as.formula(xi.fo), newdata) }
-                else { matrix(1, nrow(newdata)) }
-        X.phi <- if (!is.null(phi.fo)){ model.matrix(as.formula(object$call$phi), newdata) }
-                 else { matrix(1, nrow(newdata)) }
-    }
-
-    else {
+        X.xi <-  if (!is.null(xi.fo)) { model.matrix(as.formula(xi.fo),  newdata) } else { matrix(1, nrow(newdata)) }
+        X.phi <- if (!is.null(phi.fo)){ model.matrix(as.formula(phi.fo), newdata) } else { matrix(1, nrow(newdata)) }
+    } else {
         X.xi <- object$X.xi
         X.phi <- object$X.phi
     }
 
     if (unique.){
         u <- (1 - duplicated(X.phi)) + (1 - duplicated(X.xi)) > 0
-        X.xi <- cbind(X.xi[u, ])
-        X.phi <- cbind(X.phi[u, ])
+        X.xi  <- if(is.matrix(X.xi[u,]))  X.xi[u, ]  else if(ncol(X.xi) == 1)  cbind(X.xi[u,])  else t(cbind(X.xi[u,]))
+        X.phi <- if(is.matrix(X.phi[u,])) X.phi[u, ] else if(ncol(X.phi) == 1) cbind(X.phi[u,]) else t(cbind(X.phi[u,]))
     }
 
-    phi <- c(object$coefficients[1:ncol(X.phi)] %*% t(X.phi))
-    xi <- c(object$coefficients[(ncol(X.phi) + 1):length(object$coefficients)] %*% t(X.xi))
+    whichPhi <- 1:ncol(X.phi)
+    whichXi  <- (ncol(X.phi) + 1):length(object$coefficients)
+    phi <- c(object$coefficients[whichPhi] %*% t(X.phi))
+    xi  <- c(object$coefficients[whichXi]  %*% t(X.xi))
 
     res <- cbind(phi, xi)
 
+    if(ci.fit | se.fit | full.cov){
+       phi.cov <- as.matrix(object$cov[whichPhi, whichPhi])
+       xi.cov  <- as.matrix(object$cov[whichXi,  whichXi])
+       
+       if(ci.fit | se.fit){
+          phi.se <- sqrt(rowSums((X.phi %*% phi.cov) * X.phi))
+          xi.se <-  sqrt(rowSums((X.xi  %*% xi.cov)  * X.xi))
+       }
+    }
+    
     if (ci.fit){
-        phi.cov <- as.matrix(object$cov[1:ncol(X.phi), 1:ncol(X.phi)])
-        xi.cov <- as.matrix(object$cov[(ncol(X.phi) + 1):length(object$coefficients), (ncol(X.phi) + 1):length(object$se)])
-        phi.se <- sqrt(rowSums((X.phi %*% phi.cov) * object$X.phi))
-        xi.se <- sqrt(rowSums((X.xi %*% xi.cov) * X.xi))
-
         z <- qnorm(1 - alpha/2)
 
         phi.lo <- phi - phi.se*z
@@ -87,24 +90,15 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     } # Close if(ci.fit
 
     if (se.fit){
-        if (!ci.fit){ # Because if ci.fit, phi.se and xi.se already exist
-            phi.cov <- as.matrix(object$cov[1:ncol(X.phi), 1:ncol(X.phi)])
-            xi.cov <- as.matrix(object$cov[(ncol(X.phi) + 1):length(object$coefficients), (ncol(X.phi) + 1):length(object$se)])
-            phi.se <- sqrt(rowSums((X.phi %*% phi.cov) * X.phi))
-            xi.se <- sqrt(rowSums((X.xi %*% xi.cov) * X.xi))
-        }
         res <- cbind(res, phi.se, xi.se)
     } # Close if(se.fit
-    
+   
     if (full.cov){ # Covariance of (phi, xi) for each unique (phi, xi) pair
-        phi.cov <- as.matrix(object$cov[1:ncol(X.phi), 1:ncol(X.phi)])
-        xi.cov <- as.matrix(object$cov[(ncol(X.phi) + 1):length(object$coefficients), (ncol(X.phi) + 1):length(object$se)])
-
         covar <- rep(0, nrow(X.xi))
         for(k in 1:length(covar)){
             for (i in 1:ncol(X.phi)){
                 for (j in 1:ncol(X.xi)){
-                    covar[k] <- covar[k] + X.phi[k, i] * X.xi[k, j] * object$cov[i, j]
+                    covar[k] <- covar[k] + X.phi[k, i] * X.xi[k, j] * object$cov[i, ncol(X.phi) + j] 
                 } # Close for j
             } # Close for i
         } # Close for k
@@ -130,7 +124,7 @@ rl <- function(object, M, newdata, se.fit=FALSE, ci.fit=FALSE, alpha=.050, uniqu
 
 gpd.delta <- function(a, m){
    # This is not exact if a prior (penalty) function is used, but
-   # the CI is approxima#te anyway.
+   # the CI is approximate anyway.
         
     out <- matrix(0, nrow=3, ncol=length(m))
         
@@ -150,7 +144,7 @@ gpd.delta <- function(a, m){
 rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                    alpha=.050, unique.=TRUE){
     co <- predict.link.gpd(object, newdata=newdata, unique.=unique., full.cov=TRUE)
-    covs <- co[[2]] # List of covariance matrices
+    covs <- co[[2]] # List list(phi.var=phi.var, xi.var=xi.var, covariances=covar)
     co <- co[[1]]
  
     gpdrl <- function(u, theta, phi, xi, m){
@@ -239,23 +233,19 @@ predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000,
 predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                               alpha=.050, unique.=TRUE, all=FALSE, sumfun=NULL){
     if (!is.null(newdata)){
-        xi.fo <- object$call$xi
-        phi.fo <- object$call$phi
-        X.xi <- if (!is.null(xi.fo)){ model.matrix(as.formula(xi.fo), newdata) }
-                else { matrix(1, nrow(newdata)) }
-        X.phi <- if (!is.null(phi.fo)){ model.matrix(as.formula(object$call$phi), newdata) }
-                 else { matrix(1, nrow(newdata)) }
-    }
-
-    else {
+        xi.fo <- object$map$call$xi
+        phi.fo <- object$map$call$phi
+        X.xi <-  if (!is.null(xi.fo))  model.matrix(as.formula(xi.fo),  newdata) else matrix(1, nrow(newdata)) 
+        X.phi <- if (!is.null(phi.fo)) model.matrix(as.formula(phi.fo), newdata) else matrix(1, nrow(newdata))
+    } else {
         X.xi <- object$X.xi
         X.phi <- object$X.phi
     }
 
     if (unique.){
         u <- (1 - duplicated(X.phi)) + (1 - duplicated(X.xi)) > 0
-        X.xi <- cbind(X.xi[u, ])
-        X.phi <- cbind(X.phi[u, ])
+        X.xi  <- if(is.matrix(X.xi[u,]))  X.xi[u, ]  else if(ncol(X.xi) == 1)  cbind(X.xi[u,])  else t(cbind(X.xi[u,]))
+        X.phi <- if(is.matrix(X.phi[u,])) X.phi[u, ] else if(ncol(X.phi) == 1) cbind(X.phi[u,]) else t(cbind(X.phi[u,]))
     }
 
     phi <- cbind(object$param[, 1:ncol(X.phi)])
@@ -278,8 +268,9 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                 c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x))
             }
             neednames <- TRUE
+        } else { 
+            neednames <- FALSE 
         }
-        else { neednames <- FALSE }
 
         res <- t(sapply(res, function(x, fun){ apply(x, 2, sumfun) }, fun=sumfun))
         
@@ -311,7 +302,7 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
     # co is (probably) a list with one element for each unique item in
     # new data. Need to loop over vector M and the elements of co
     
-    getrl <- function( co, u, theta, m, ci.fit, alpha, all){
+    getrl <- function(m, co, u, theta, ci.fit, alpha, all){
         res <- sapply(co, bgpdrl, u=u, theta=theta, m=m)
 
         if (ci.fit){
@@ -320,8 +311,9 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
                     c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x))
                 }
                 neednames <- TRUE
+            } else { 
+               neednames <- FALSE 
             }
-            else { neednames <- FALSE }
             res <- t(apply(res, 2, sumfun))
             if (neednames){
                 colnames(res) <- c(paste(100*alpha/2, "%", sep = ""),
@@ -338,7 +330,7 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
         res
     }
     
-    res <- lapply(M, getrl, co=co, u=object$threshold, theta=object$map$rate, ci.fit=ci.fit, alpha=alpha, all)
+    res <- lapply(M, getrl, co=co, u=object$threshold, theta=object$map$rate, ci.fit=ci.fit, alpha=alpha, all=all)
     names(res) <- paste("M.", M, sep = "")
     res
 
@@ -356,36 +348,38 @@ predict.bootgpd <- function(object, newdata=NULL, type="return level",
                   "rl" = , "return level" = rl.bootgpd(object, M, newdata=newdata,
                                                        unique.=TRUE,
                                                        se.fit=se.fit, ci.fit=ci.fit,
-                                                       all=FALSE, alpha=alpha),
+                                                       all=all, alpha=alpha),
                   "lp" = , "link" = predict.link.bootgpd(object, newdata=newdata,
                                                          unique.=TRUE,
                                                          se.fit=se.fit, ci.fit=ci.fit,
-                                                         all=FALSE, alpha=alpha)
+                                                         all=all, alpha=alpha)
                   )
     res
 
 }
+
+namesBoot2bgpd <- function(object){
+    names(object) <- c("call", "param", "original", "map")
+    object$X.phi <- object$map$X.phi
+    object$X.xi <- object$map$X.xi
+    object$threshold <- object$map$threshold
+    object
+}
+
 predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                                  unique.=TRUE, all=FALSE, alpha=.050){
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
-    names(bb) <- c("call", "param", "original", "map")
-    bb$X.phi <- bb$map$X.phi
-    bb$X.xi <- bb$map$X.xi
-    bb$threshold <- bb$map$threshold
-    predict.link.bgpd(bb, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit)
+  object <- namesBoot2bgpd(object)
+  predict.link.bgpd(object, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit)
 }
 
 rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=FALSE,
                        unique.=TRUE, alpha=alpha){
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
-    names(bb) <- c("call", "param", "original", "map")
-    bb$X.phi <- bb$map$X.phi
-    bb$X.xi <- bb$map$X.xi
-    bb$threshold <- bb$map$threshold
-    rl.bgpd(bb, M=M, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,
-            alpha=alpha)
+  object <- namesBoot2bgpd(object)
+  rl.bgpd(object, M=M, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,alpha=alpha)
 }
 
 
