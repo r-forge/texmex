@@ -15,9 +15,6 @@
 # predict.link.bootgpd
 # rl.bootgpd
 
-## TODO: Need to add rownames (or something) resulting from using unique() on
-##       the design matrices.
-
 ################################################################################
 ## gpd
 
@@ -27,8 +24,6 @@ predict.gpd <-
 function(object, newdata=NULL, type="return level", se.fit=FALSE,
          ci.fit=FALSE, M=1000, alpha=.050, unique.=TRUE){
     theCall <- match.call()
-    
-#    type <- match.arg(type)
     
     res <- switch(type,
                   "rl"=, "return level" = rl.gpd(object, M, newdata,
@@ -92,7 +87,14 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     if (se.fit){
         res <- cbind(res, phi.se, xi.se)
     } # Close if(se.fit
-   
+
+    if(dim(X.phi)[2] > 1){
+      res <- cbind(res,X.phi)
+    }
+    if(dim(X.xi)[2] > 1){
+      res <- cbind(res,X.xi)
+    }
+
     if (full.cov){ # Covariance of (phi, xi) for each unique (phi, xi) pair
         covar <- rep(0, nrow(X.xi))
         for(k in 1:length(covar)){
@@ -107,6 +109,7 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
         
         res <- list(link=res, cov=list(phi.var=phi.var, xi.var=xi.var, covariances=covar))
     }
+    oldClass(res) <- "predict.link.gpd"
     res
 }
 
@@ -137,7 +140,7 @@ gpd.delta <- function(a, m){
         out[3,] <- -exp(a[2]) / (a[3]*a[3]) * ( (m * a[1] )^a[3] - 1 ) +
                    exp(a[2]) / a[3] * (m * a[1])^a[3] * log(m * a[1])
     } 
-
+    
    out
 } 
 
@@ -176,7 +179,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
         se
     }
 
-    if (ci.fit){
+    if (ci.fit){ # need to update plotrl.gpd too once profile lik confidence intervals implemented here
         co <- cbind(rep(object$rate, nrow(co)), co)
         ci.fun <- function(i, object, co, M, res, alpha){
             wh <- res[[i]];
@@ -206,6 +209,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     }
     
     names(res) <- paste("M.", M, sep = "")
+    oldClass(res) <- "rl.gpd"
     res
 }
 
@@ -287,6 +291,7 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     else { # Just point estimates
         res <- t(sapply(res, function(x){ apply(x, 2, mean) }))
     }
+    oldClass(res) <- "predict.link.bgpd"
     res
 }
 
@@ -332,8 +337,8 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
     
     res <- lapply(M, getrl, co=co, u=object$threshold, theta=object$map$rate, ci.fit=ci.fit, alpha=alpha, all=all)
     names(res) <- paste("M.", M, sep = "")
+    oldClass(res) <- "rl.bgpd"
     res
-
 }
 
 ################################################################################
@@ -371,7 +376,9 @@ predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALS
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
   object <- namesBoot2bgpd(object)
-  predict.link.bgpd(object, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit)
+  res <- predict.link.bgpd(object, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit)
+  oldClass(res) <- "predict.link.bootgpd"
+  res
 }
 
 rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=FALSE,
@@ -379,7 +386,9 @@ rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
   object <- namesBoot2bgpd(object)
-  rl.bgpd(object, M=M, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,alpha=alpha)
+  res <- rl.bgpd(object, M=M, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,alpha=alpha)
+  oldClass(res) <- "rl.bootgpd"
+  res
 }
 
 
