@@ -1,109 +1,109 @@
 plotrl.gpd <-
 function(object, alpha = .050,
          xlab, ylab, main,
-         pch= 1, col =2 , cex=.75, linecol = 4 ,
+         pch= 1, ptcol =2 , cex=.75, linecol = 4 ,
          cicol = 0, polycol = 15, smooth = TRUE ){
 
-    # Define a helper function. Page 82 of Coles, note that our parameters are phi=log sigma and xi so implementation slightly different.
-    gpd.delta <- function(a, m){
-        # This is not exact if a prior (penalty) function is used, but
-        # the CI is approximate anyway.
-        if (length(a) != 3){
-            stop("covariates not allowed in return level plot")
-        }
-        
-        out <- matrix(0, nrow=3, ncol=length(m))
-        
-        if (a[3] == 0){ # exponential case
-            out[1,] <- exp(a[2]) / a[1]
-            out[2,] <- exp(a[2]) * log(m * a[1])
-        } else {
-            out[1,] <- exp(a[2]) * m^a[3] * a[1]^(a[3] - 1)
-            out[2,] <- exp(a[2]) / a[3] * ((m*a[1])^a[3] - 1) 
-            out[3,] <- -exp(a[2]) / (a[3]*a[3]) * ( (m * a[1] )^a[3] - 1 ) +
-                       exp(a[2]) / a[3] * (m * a[1])^a[3] * log(m * a[1])
-        } 
-
-        out
-    } 
-
+    if(dim(object$X.phi)[2] > 1 | dim(object$X.xi)[2] > 1){
+      stop("use plot method for object returned by predict.gpd to see rl plots if covariates in model")
+    }
     if (missing(xlab) || is.null(xlab)) { xlab <- "Return period" }
     if (missing(ylab) || is.null(ylab)) { ylab <- "Return level" }
     if (missing(main) || is.null(main)) { main <- "Return Level Plot" }
 
-    a <- object$coefficients
-    u <- object$threshold
-    la <- object$rate # rate of threshold excess
-    n <- length(object$y) / la # Number of obs prior to thresholding
-
     xdat <- object$y
-	
-    a <- c(la, a)
+    n <- length(xdat) / object$rate # Number of obs prior to thresholding
 
     jj <- seq(-1, max(3.75,log10(n)),by=0.1)
 
-    m <- unique( c(1/la, 10^jj) )
+    m <- unique( c(1/object$rate, 10^jj) )
+    xm <- matrix(unlist(rl(object,M=m,ci=TRUE,alpha=alpha)),ncol=3,byrow=TRUE)
+    colnames(xm) <- c("RL","ci.l","ci.u")
 
-#    xm <- rl.gpd(object, M=m, ci.fit=TRUE, alpha=alpha)
+    U <- object$threshold - abs(object$threshold/100)
+    plotX <- xm[,"RL"] > U
+    
+    plotRLgpd(m[plotX],xm[plotX,],polycol,cicol,linecol,ptcol,n,xdat,pch,
+              smooth,xlab,ylab,main,xrange=range(m),yrange=range(c(xdat, range(xm[plotX,c(1,3)]))))
+              
+    invisible(list(m=m, xm=xm))
+}
 
-    xm <- qgpd2(m, exp(a[2]), a[3], u, la)
-    dxm <- t(gpd.delta(a = a, m = m))
+plot.rl.gpd <- function(object,
+         xlab, ylab, main,
+         pch= 1, ptcol =2 , cex=.75, linecol = 4 ,
+         cicol = 0, polycol = 15, smooth = TRUE, sameAxes=TRUE ){
+    if (missing(xlab) || is.null(xlab)) { xlab <- "Return period" }
+    if (missing(ylab) || is.null(ylab)) { ylab <- "Return level" }
+    if (missing(main) || is.null(main)) { main <- "Return Level Plot" }
 
-    # Get covariance including P(over threshold) parameter
-    V <- matrix(c(la * (1 - la)/n, 0, 0,
-                  0, object$cov[1,],
-                  0, object$cov[2,]), ncol = 3)
+    nm <- length(names(object))
+    nd <- dim(object[[1]])[2]
+    ncov <- length(unlist(object)) / (nm * nd)
+    if(nd == 3){
+      ValNames <- c("RL","ci.l","ci.u")
+    } else {
+      stop("Please use ci.fit=TRUE in call to predict, to calculate confidence intervals")
+    }
+      
+    Array <- array(unlist(object),c(ncov,nd,nm),dimnames=list(NULL,ValNames,names(object)))
 
-    # Get (4.15) of Coles, page 82, adjusted for phi = log(sigma)
-    vxm <- mahalanobis(dxm, center=c(0, 0, 0), cov=V, inverted=TRUE)
+    m <- as.numeric(substring(dimnames(Array)[[3]],first=3))
+   
+    if(sameAxes){
+       yrange <- range(Array)
+    }
+    if(length(main) == 1){
+      Main <- rep(main,ncov)
+    } else {
+      Main <- main
+    }
+    
+    for(i in 1:ncov){
+      xm <- t(Array[i,,])
+      if(!sameAxes){ 
+        yrange <- range(xm)
+      }
+      plotRLgpd(m,xm,polycol = polycol,cicol=cicol,linecol=linecol,ptcol=ptcol,pch=pch,
+                smooth=smooth,xlab=xlab,ylab=ylab,main=Main[i],xrange=range(m),yrange=yrange)
+    }
+    
+    invisible(list(m=m,xm=Array))
+}
 
-    plot(m, xm,
-         log = "x",
-         type = "n",
-         xlim=range(m),
-         ylim=range(c(xdat, xm[xm > u - 1] + qnorm(1-alpha/2) * sqrt(vxm)[xm > u - 1])), 
-         xlab = xlab, ylab = ylab, main = main)
+plotRLgpd <- function(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange){
 
-    # Do polygon and CI lines
-    U <- u - abs(u/100)
-    if (smooth & length(xdat) > 2) {
-        splo <- spline(log(m[xm > U]),
-                       xm[xm > U] - qnorm(1-alpha/2) * sqrt(vxm)[xm > U] ,
-                       200)
-        sphi <- spline(log(m[xm > U]),
-                       xm[xm > U] + qnorm(1-alpha/2) * sqrt(vxm)[xm > U] ,
-                       200)
+    plot(m, xm[,"RL"], log = "x", type = "n",
+         xlim=xrange, ylim=yrange, xlab = xlab, ylab = ylab, main = main)
+
+      if (smooth) {
+        splo <- spline(log(m), xm[,"ci.l"] , 200)
+        sphi <- spline(log(m), xm[,"ci.u"] , 200)
         if ( polycol != 0 ) {
             polygon( exp(c( splo$x, rev( sphi$x ) )),
-	             c( splo$y, rev( sphi$y ) ),
-                     col = polycol ,
-                     border=FALSE		    )
+	                       c( splo$y, rev( sphi$y ) ),
+                     col = polycol , border=FALSE)
          } # Close if (polycol
          lines( exp(splo$x), splo$y, col = cicol )
          lines( exp(sphi$x), sphi$y, col = cicol )
-    } else{
+      } else{
         if (polycol != 0){
-            polygon(c(m[xm > U], rev( m[xm > U])),
-                    c(xm[xm > U] - qnorm(1 - alpha/2) * sqrt(vxm)[xm > U],
-                      rev(xm[xm > U] + qnorm(1 - alpha/2) * sqrt(vxm)[xm > U])),
-                    col=polycol,
-                    border = FALSE) # Close polygon
+            polygon(c( m,        rev( m)),
+                    c(xm[,"ci.l"],rev(xm[,"ci.u"])),
+                    col=polycol, border = FALSE) # Close polygon
         } else {
-            lines(m[xm > U],
-                  xm[xm > U] + qnorm(1 - alpha/2) * sqrt(vxm)[xm > U],
-                  col = cicol)
-            lines(m[xm > U],
-                  xm[xm > U] - qnorm(1 - alpha/2) * sqrt(vxm)[xm > U],
-                  col = cicol)
+            lines(m, xm[,"ci.u"], col = cicol)
+            lines(m, xm[,"ci.l"], col = cicol)
         }
-    } 
+      }      
 	
-    lines(m[xm > U], xm[xm > U], col = linecol[ 1 ] )
+      lines(m, xm[,"RL"], col = linecol[ 1 ] )
 
     # Add observed data to the plot
-    ly <- length(xdat)
-    points(1 / (1 - ((n - ly + 1):n) / (n + 1)), sort(xdat), pch=pch, col=col)
-    box()
-    invisible(list(m=m, vxm=vxm))
-}
-
+    if(!missing(xdat) & !missing(n)){
+      ly <- length(xdat)
+      points(1 / (1 - ((n - ly + 1):n) / (n + 1)), sort(xdat), pch=pch, col=ptcol)
+      box()
+    }
+ }
+    
