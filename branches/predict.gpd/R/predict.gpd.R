@@ -285,12 +285,20 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 
             colnames(res) <- c(paste("phi:", nms), paste("xi:", nms))
         }
-    }
-    else if (se.fit){ warning("se.fit not implemented - ignoring") }
+    } else if (se.fit){ warning("se.fit not implemented - ignoring") }
     else if (all){ res <- res }
     else { # Just point estimates
         res <- t(sapply(res, function(x){ apply(x, 2, mean) }))
     }
+    if(!all){
+      if(dim(X.phi)[2] > 1){
+        res <- cbind(res,X.phi)
+      }
+      if(dim(X.xi)[2] > 1){
+        res <- cbind(res,X.xi)
+      }
+    }
+
     oldClass(res) <- "predict.link.bgpd"
     res
 }
@@ -304,9 +312,9 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
         cbind(RL=res)
     }
     
-    # co is (probably) a list with one element for each unique item in
+    # co is a list with one element for each unique item in
     # new data. Need to loop over vector M and the elements of co
-    
+  
     getrl <- function(m, co, u, theta, ci.fit, alpha, all){
         res <- sapply(co, bgpdrl, u=u, theta=theta, m=m)
 
@@ -376,7 +384,7 @@ predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALS
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
   object <- namesBoot2bgpd(object)
-  res <- predict.link.bgpd(object, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit)
+  res <- predict.link.bgpd(object, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,alpha=alpha)
   oldClass(res) <- "predict.link.bootgpd"
   res
 }
