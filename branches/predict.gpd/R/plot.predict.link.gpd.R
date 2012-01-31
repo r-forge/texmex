@@ -1,8 +1,8 @@
 plot.predict.link.gpd <- function(object, main=NULL,
          pch= 1, ptcol =2 , cex=.75, linecol = 4 ,
-         cicol = 0, polycol = 15){
+         cicol = 1, polycol = 15){
 
-  if(!  sum(colnames(object) == "phi.lo") ){
+  if( !any(colnames(object) == "phi.lo") ){
     stop("Please use ci.fit=TRUE in call to predict, to calculate confidence intervals")
   }
 
@@ -39,6 +39,25 @@ plot.predict.link.gpd <- function(object, main=NULL,
       }
     }
   }
-  
-  
+  invisible()
 }
+
+plot.predict.link.bgpd <- function(object,type="median",...){
+
+# re-format to same column structure as predict.link.gpd object
+
+  if( casefold(type) == "median"){
+    object <- object[,c(2,6,1,3,5,7,9:dim(object)[2])]
+  } else if(casefold(type) == "mean") {
+    object <- object[,c(4,8,1,3,5,7,9:dim(object)[2])]
+  } else {
+    stop("type must be \"mean\" or \"median\" ")
+  }
+  
+  colnames(object)[1:6] <-  c("phi", "xi", "phi.lo", "phi.hi", "xi.lo", "xi.hi")
+
+  plot.predict.link.gpd(object,...)
+}
+
+plot.predict.link.bootgpd <- plot.predict.link.bgpd
+
