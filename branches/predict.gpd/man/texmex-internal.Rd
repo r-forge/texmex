@@ -22,6 +22,7 @@
 \alias{profile_minmax_joint_posneg_KT}
 \alias{Dcond}
 \alias{estimate_HT}
+\alias{gpd.delta}
 \title{Internal functions for texmex}
 \description{Internal functions used by the \code{texmex} package.}
 
@@ -53,6 +54,7 @@ profile_minmax_joint_posneg_KT (pars,listdata,u,q1=0,q2=1,...,sill=-10^(40))
 initial_posneg(D,...)
 estimate_HT_KPT_joint_posneg_nm(pars,x,listr,params=TRUE,...,k=3)
 inv_Laplace(p)
+gpd.delta(a, m)
 }
 
 \arguments{
@@ -87,6 +89,8 @@ inv_Laplace(p)
 \item{yex, ydep}{Data for model estimation: \code{yex} is the explanatory variable on which the model conditions, and \code{ydep} is the dependent variable.}
 \item{par, listr, silly, list, pars, params, c, d, zi, zk, lev, Zj, Zk, Zestfun, listdata,
 q1, q2, sill, D, k}{Arguments to independently coded test functions implementing constrained estimation of the H+T2004 conditional dependence model with Laplace margins.}
+\item{a, m}{Arguments to \code{gpd.delta} which is used internally to find
+  approximate standard errors for return levels for gpd-type objects.}
 }
 \details{
 None of these functions are intended to be used explicitly.
