@@ -243,7 +243,7 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     }
 
     if (unique.){
-        u <- (1 - duplicated(X.phi)) + (1 - duplicated(X.xi)) > 0
+        u <- !duplicated(cbind(X.phi,X.xi))
         X.xi  <- if(is.matrix(X.xi[u,]))  X.xi[u, ]  else if(ncol(X.xi) == 1)  cbind(X.xi[u,])  else t(cbind(X.xi[u,]))
         X.phi <- if(is.matrix(X.phi[u,])) X.phi[u, ] else if(ncol(X.phi) == 1) cbind(X.phi[u,]) else t(cbind(X.phi[u,]))
     }
@@ -485,15 +485,15 @@ test.predict.gpd <- function(){
 
 # unique
 
-  newX <- data.frame(a=c(0,0,0,1,1,1,2,2,2,3,3,3,4,4,4),b=c(-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1))
+  newX <- data.frame(a=c(0,0,0,1,1,1,2,2,2,3,3,3,4,4,4),b=c(-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1)) # checks for duplicates in one and both covariates.
   U <- !duplicated(newX)
   checkEqualsNumeric(current = predict(fit,newX,type="lp"),
-                     target = predict(fit,newX,unique.=FALSE,type="lp")[U,], msg="predict.gpd: functioning of argument unique")
+                     target = predict(fit,newX,unique.=FALSE,type="lp")[U,], msg="predict.gpd: functioning of argument unique, for linear predictor")
   checkEqualsNumeric(current = predict(fit,newX)[[1]],
-                     target =  predict(fit,newX,unique.=FALSE)[[1]][U,], msg="predict.gpd: functioning of argument unique")
+                     target =  predict(fit,newX,unique.=FALSE)[[1]][U,], msg="predict.gpd: functioning of argument unique, for return levels")
 
 # check standard errors - this takes a while since using bootstrap
-    browser() 
+    
   M <- c(10,100,500,1000,2000)
   newX <- data.frame("a"=c(1,2),"b"=c(-0.1,0.1))
   fit.p <- predict(fit, newdata=newX,se=TRUE,M=M)
@@ -507,3 +507,84 @@ test.predict.gpd <- function(){
   checkEqualsNumeric(rep(0,length(fit.seboot)), (fit.seboot -  fit.seest) / fit.seest, tol=0.1,msg="predict.gpd: standard error estimate compared with bootstrap standard errors")
 }
 
+test.predict.bgpd <- function(){
+# no covariates
+  u <- 14
+  r.fit <- gpd(rain,th=u,method="sim")
+
+  checkEqualsNumeric(target=u,current=predict(r.fit,M=1/r.fit$map$rate)[[1]], msg="predict.bgpd: retreive threshold")
+
+  t.fit <- r.fit
+  t.fit$map$rate <- 1
+  p <- c(0.5,0.9,0.95,0.99,0.999)
+  checkEqualsNumeric(target = sapply(p,function(p)mean(qgpd(p,exp(t.fit$param[,1]),t.fit$param[,2],u))),
+                     current = unlist(predict(t.fit,M=1/(1-p))),msg="predict.bgpd: ret level estimation")
+
+# with covariates
+
+  n <- 100
+  M <- 1000
+  X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
+  Y <- rgpd(n,exp(X[,1]),X[,2])
+  X$Y <- Y
+  fit <- gpd(Y,data=X,phi=~a,xi=~b,th=0,method="sim")
+
+  sig <- apply(fit$param,1,function(v)exp(cbind(rep(1,n),X[,1]) %*% v[1:2]))
+  xi <-  apply(fit$param,1,function(v)    cbind(rep(1,n),X[,2]) %*% v[3:4]) 
+  
+  qbgpd <- function(p,sig,xi,u)sapply(1:dim(sig)[1],function(i) mean(qgpd(p,sig[i,],xi[i,],u)))
+
+  checkEqualsNumeric(target = qbgpd(1-1/M,sig,xi,0),
+                     current = predict(fit,M=M)[[1]],msg="predict.bgpd: ret level estimation with covariates")
+
+# check multiple M
+  M <- c(10,50,100,500,1000)
+
+  temp1 <- sapply(M,function(m)qbgpd(1-1/m,sig,xi,u=0))
+  temp2 <- predict(fit,M=M)
+
+  checkEqualsNumeric(target = temp1[,1],current = temp2[[1]],msg="predict.bgpd multiple M")
+  checkEqualsNumeric(target = temp1[,2],current = temp2[[2]],msg="predict.bgpd multiple M")
+  checkEqualsNumeric(target = temp1[,3],current = temp2[[3]],msg="predict.bgpd multiple M")
+  checkEqualsNumeric(target = temp1[,4],current = temp2[[4]],msg="predict.bgpd multiple M")
+  checkEqualsNumeric(target = temp1[,5],current = temp2[[5]],msg="predict.bgpd multiple M")
+
+# new data
+  nx <- 20
+  M <- 1000
+  newX <- data.frame(a=runif(nx,0,5),b=runif(nx,-0.1,0.5))
+  predict(fit,newX)
+
+  sig <- exp(cbind(rep(1,nx),newX[,1]) %*% t(fit$param[,1:2]))
+  xi <-      cbind(rep(1,nx),newX[,2]) %*% t(fit$param[,3:4])
+
+  checkEqualsNumeric(target = qbgpd(1-1/M,sig=sig,xi=xi,u=0),
+                     current = predict(fit,M=M,newdata=newX)[[1]],msg="predict.bgpd : ret level estimation with new data")
+
+  checkEqualsNumeric(target = c(n,4), current = dim(predict(fit,ci=TRUE)[[1]]), msg="predict.bgpd: dimension of output with ci calculation")
+  checkEqualsNumeric(target = c(n,4), current = dim(predict(fit,se=TRUE,ci=TRUE)[[1]]), msg="predict.bgpd: dimension of output with ci calculation")
+
+  checkEquals(target = c("2.5%","50%","97.5%","Mean"), colnames(predict(fit,ci=TRUE)[[1]]), msg="predict.bgpd: colnames of ret level ests with CI estimation")
+  checkEquals(target = c("5%","50%","95%","Mean"), colnames(predict(fit,alpha=0.1,ci=TRUE)[[1]]), msg="predict.bgpd: colnames of ret level ests with CI estimation, alpha=0.1")
+
+# check linear predictors
+
+  checkEqualsNumeric(current = predict(fit,newX,type="lp")[,1:2],
+                    target = cbind(apply(cbind(rep(1,nx),newX[,1]) %*% t(fit$param[,1:2]),1,mean),
+                                   apply(cbind(rep(1,nx),newX[,2]) %*% t(fit$param[,3:4]),1,mean)),
+                    msg = "predict.bgpd: linear predictor estimates")
+
+  checkEqualsNumeric(target = c(nx,10), dim(predict(fit,newX,ci=TRUE,type="lp")), msg="predict.bgpd: dimension of pinear predictor return object")
+
+  cnames <- c("phi: 2.5%", "phi: 50%", "phi: 97.5%", "phi: Mean", "xi: 2.5%", "xi: 50%", "xi: 97.5%", "xi: Mean")# this specific format assumed by plot.rl.bgpd 
+
+  checkEquals(current = cnames, target = colnames(predict(fit,newX,ci=TRUE,type="lp"))[1:8], msg="predict.bgpd: col names of lin predictors with CI calcs")
+  checkEquals(current = cnames, target = colnames(predict(fit,newX,ci=TRUE,se=TRUE,type="lp"))[1:8], msg="predict.bgpd: col names of lin predictors with CI+SE calcs")
+
+# unique
+  newX <- data.frame(a=c(0,0,0,1,1,1,2,2,2,3,3,3,4,4,4),b=c(-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1))
+
+  checkEqualsNumeric(current = predict(fit,newX)[[1]], target = unique(predict(fit,newX,unique.=FALSE)[[1]]),msg="predict.bgpd: unique functioning for ret level ests")
+  checkEqualsNumeric(current = predict(fit,newX,type="lp")[,], target = unique(predict(fit,newX,unique.=FALSE,type="lp")[,]),msg="predict.bgpd: unique functioning for lin pred ests")
+
+}
