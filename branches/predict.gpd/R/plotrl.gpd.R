@@ -2,7 +2,7 @@ plotrl.gpd <- # intended as a diagnostic for a gpd fitted with no covariates. Ca
 function(object, alpha = .050,
          xlab, ylab, main,
          pch= 1, ptcol =2 , cex=.75, linecol = 4 ,
-         cicol = 0, polycol = 15, smooth = TRUE ){
+         cicol = 0, polycol = 15, smooth = TRUE,RetPeriodRange=NULL ){
 
     if(dim(object$X.phi)[2] > 1 | dim(object$X.xi)[2] > 1){
       stop("use plot method for object returned by predict.gpd to see rl plots if covariates in model")
@@ -14,7 +14,12 @@ function(object, alpha = .050,
     xdat <- object$y
     n <- length(xdat) / object$rate # Number of obs prior to thresholding
 
-    jj <- seq(-1, max(3.75,log10(n)),by=0.1)
+    if(!is.null(RetPeriodRange)){
+      ran <- log10(RetPeriodRange)
+      jj <- seq(ran[1],ran[2],by=0.1)
+    } else {
+      jj <- seq(-1, max(3.75,log10(n)),by=0.1)
+    }
 
     m <- unique( c(1/object$rate, 10^jj) )
     xm <- matrix(unlist(rl(object,M=m,ci=TRUE,alpha=alpha)),ncol=3,byrow=TRUE)
@@ -23,8 +28,11 @@ function(object, alpha = .050,
     U <- object$threshold - abs(object$threshold/100)
     plotX <- xm[,"RL"] > U
     
+    xrange <- range(m)
+    yrange <- range(c(xdat, range(xm[plotX,c(1,3)])))
+    
     plotRLgpd(m[plotX],xm[plotX,],polycol,cicol,linecol,ptcol,n,xdat,pch,
-              smooth,xlab,ylab,main,xrange=range(m),yrange=range(c(xdat, range(xm[plotX,c(1,3)]))))
+              smooth,xlab,ylab,main,xrange=xrange,yrange=yrange)
               
     invisible(list(m=m, xm=xm))
 }
@@ -87,7 +95,7 @@ plot.rl.gpd <- function(object, # method for rl.(boot or b)gpd object, which may
 plot.rl.bootgpd <- plot.rl.bgpd <- plot.rl.gpd
 
 plotRLgpd <- function(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange){ 
-# workder function - called by plotrl.gpd, plot.rl.gpd, plot.rl.bgpd
+# worker function - called by plotrl.gpd, plot.rl.gpd, plot.rl.bgpd
 
     o <- order(m) # in case the return period are not in ascending order.
     m <- m[o]
