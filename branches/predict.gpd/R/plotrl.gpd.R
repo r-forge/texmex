@@ -23,13 +23,12 @@ function(object, alpha = .050,
 
     m <- unique( c(1/object$rate, 10^jj) )
     xm <- matrix(unlist(rl(object,M=m,ci=TRUE,alpha=alpha)),ncol=3,byrow=TRUE)
-    colnames(xm) <- c("RL","ci.l","ci.u")
 
     U <- object$threshold - abs(object$threshold/100)
-    plotX <- xm[,"RL"] > U
+    plotX <- xm[,1] > U
     
     xrange <- range(m)
-    yrange <- range(c(xdat, range(xm[plotX,c(1,3)])))
+    yrange <- range(c(xdat, range(xm[plotX,])))
     
     plotRLgpd(m[plotX],xm[plotX,],polycol,cicol,linecol,ptcol,n,xdat,pch,
               smooth,xlab,ylab,main,xrange=xrange,yrange=yrange)
@@ -37,34 +36,46 @@ function(object, alpha = .050,
     invisible(list(m=m, xm=xm))
 }
 
-
 plot.rl.gpd <- function(object, # method for rl.(boot or b)gpd object, which may have covariates.  Plots return level for each unique row in design matrix
          xlab, ylab, main,
          pch= 1, ptcol =2 , cex=.75, linecol = 4 ,
          cicol = 0, polycol = 15, smooth = TRUE, sameAxes=TRUE, type="median" ){
     if (missing(xlab) || is.null(xlab)) { xlab <- "Return period" }
     if (missing(ylab) || is.null(ylab)) { ylab <- "Return level" }
-    if (missing(main) || is.null(main)) { main <- "Return Level Plot" }
+    if (missing(main) || is.null(main)) { 
+      main <- "Return Level Plot"
+      SetMain <- TRUE
+    } else {
+      if(length(main) == 1){
+        SetMain <- TRUE
+      } else {
+        SetMain <- FALSE
+      }
+    }
 
     nm <- length(names(object))
+    if(nm < 2) {
+      stop("Need to have more than one value of M at which to plot return level curve")
+    }
     nd <- dim(object[[1]])[2]
     ncov <- length(unlist(object)) / (nm * nd)
     ValNames <- colnames(object[[1]])
 
-    if(length(ValNames) == 1 |  !any(ValNames == "2.5%")){
+    if(!SetMain & length(main) != ncov){
+      stop("main must be length 1 or number of unique covariates for prediction")
+    }
+    
+    if(length(ValNames) == 1 |  length(grep("%",ValNames)) <2){
       stop("Please use ci.fit=TRUE in call to predict, to calculate confidence intervals")
     }
       
     Array <- array(unlist(object),c(ncov,nd,nm),dimnames=list(NULL,ValNames,names(object)))
 
+    Array <- Array[,dimnames(Array)[[2]] != "se.fit",] # just in case se was calculated!
+
     m <- as.numeric(substring(dimnames(Array)[[3]],first=3))
    
-    if(length(main) == 1){
-      Main <- rep(main,ncov)
-    } else {
-      Main <- main
-    }
-    
+
     if( class(object) == "rl.bgpd" | class(object) == "rl.bootgpd"){
       if(casefold(type) == "median"){
         Array <- Array[,c(2,1,3),]
@@ -75,18 +86,27 @@ plot.rl.gpd <- function(object, # method for rl.(boot or b)gpd object, which may
       }
     }
 
+    covnames <- dimnames(Array)[[2]][-(1:3)]
+
     if(sameAxes){
        yrange <- range(Array)
     }    
   
     for(i in 1:ncov){
       xm <- t(Array[i,,])
+      cov <- xm[1,-(1:3)]
       
       if(!sameAxes){ 
-        yrange <- range(xm)
+        yrange <- range(xm[,1:3])
+      }
+
+      if(SetMain){
+        Main <- paste(main,"\n", paste(covnames,"=",signif(cov,2),collapse=", "))
+      } else {
+        Main <- main[i]
       }
       plotRLgpd(m,xm,polycol = polycol,cicol=cicol,linecol=linecol,ptcol=ptcol,pch=pch,
-                smooth=smooth,xlab=xlab,ylab=ylab,main=Main[i],xrange=range(m),yrange=yrange)
+                smooth=smooth,xlab=xlab,ylab=ylab,main=Main,xrange=range(m),yrange=yrange)
     }
     
     invisible(list(m=m,xm=Array))
@@ -135,3 +155,35 @@ plotRLgpd <- function(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,yl
     }
  }
     
+test.plotrl.gpd <- function()
+{
+# no covariates
+  
+  rain.fit <- gpd(rain,th=14)
+  par(mfrow=c(1,1))
+  plotrl.gpd(rain.fit)
+
+# with covariates
+
+  n <- 100
+  X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
+  Y <- rgpd(n,exp(X[,1]),X[,2])
+  X$Y <- Y
+  fit <- gpd(Y,data=X,phi=~a,xi=~b,th=0)
+  rl <- predict(fit,ci=TRUE)
+  
+  checkException(plotrl.gpd(fit),silent=TRUE,msg="plotrl.gpd : failure for model with covariates")
+  checkException(plot(rl),silent=TRUE,msg="plot.rl.gpd : failure when use only 1 value of M for RL calc")
+
+  nx <- 6
+  M <- seq(5,500,length=30)
+  newX <- data.frame(a=runif(nx,0,5),b=runif(nx,-0.1,0.5))  
+  rl <- predict(fit,newdata=newX,ci=TRUE,se=TRUE,M=M)
+  par(mfrow=n2mfrow(nx))
+  plot(rl,sameAxes=TRUE,main=paste("Validation suite plot",1:nx))
+  plot(rl,sameAxes=FALSE)
+    
+  checkException(plot(predict(fit,newdata=newX,ci=FALSE)),silent=TRUE,msg="plotrl.gpd: failure if no conf ints supplied")
+  
+}
+
