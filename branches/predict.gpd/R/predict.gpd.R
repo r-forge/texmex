@@ -143,8 +143,9 @@ gpd.delta <- function(a, m){
 rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                    alpha=.050, unique.=TRUE){
     co <- predict.link.gpd(object, newdata=newdata, unique.=unique., full.cov=TRUE)
-    covs <- co[[2]] # List list(phi.var=phi.var, xi.var=xi.var, covariances=covar)
+    covs <- co[[2]] # list(phi.var=phi.var, xi.var=xi.var, covariances=covar)
     co <- co[[1]]
+    X <- co[,-(1:2)]
  
     gpdrl <- function(u, theta, phi, xi, m){
         res <- u + exp(phi) / xi *((m * theta)^xi -1) 
@@ -174,9 +175,10 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                      }, dxm=dxm, V=V)
         se
     }
-
+    
+    co <- cbind(rep(object$rate, nrow(co)), co)
+    
     if (ci.fit){ # need to update plotrl.gpd too once profile lik confidence intervals implemented here
-        co <- cbind(rep(object$rate, nrow(co)), co)
         ci.fun <- function(i, object, co, M, res, alpha){
             wh <- res[[i]];
             se <- getse(object, co, M[i])
@@ -186,23 +188,27 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 
             colnames(wh) <- c("RL", paste(100*alpha/2, "%", sep = ""),
                               paste(100*(1 - alpha/2), "%", sep = ""))
-            #rownames(wh) <- NULL
             wh
         } # ci.fun
         res <- lapply(1:length(M), ci.fun, object=object, co=co, M=M, res=res, alpha=alpha)
     } # Close if (ci.fit
 
     if (se.fit){
-        if (!ci.fit) { co <- cbind(rep(object$rate, nrow(co)), co) }
         se.fun <- function(i, object, co, M, res, alpha){
-            wh <- res[[i]];
+            wh <- res[[i]]
             se <- getse(object, co, M[i])
             wh <- cbind(RL=wh, se.fit=se)
-            #rownames(wh) <- NULL
             wh
         } # ci.fun
         res <- lapply(1:length(M), se.fun, object=object, co=co, M=M, res=res, alpha=alpha)
     }
+    
+    cov.fun <- function(i,res){
+      wh <- res[[i]]
+      wh <- addCov(wh,X)
+      wh
+    }
+    res <- lapply(1:length(M), cov.fun,res=res)
     
     names(res) <- paste("M.", M, sep = "")
     oldClass(res) <- "rl.gpd"
@@ -365,12 +371,14 @@ predict.bootgpd <- function(object, newdata=NULL, type="return level",
 }
 
 addCov <- function(res,X){ # used in predict.link.* to add covariates to columns reported in output
-  if(dim(X)[2] > 1){
-     cov <- X[,colnames(X) != "(Intercept)"]
-     res <- cbind(res,cov)
-     if(is.vector(cov)) colnames(res)[dim(res)[2]] <- colnames(X)[colnames(X) != "(Intercept)"]
-   }
-   res
+  if(!is.null(dim(X))){
+    if(dim(X)[2] > 1){
+       cov <- X[,colnames(X) != "(Intercept)"]
+       res <- cbind(res,cov)
+       if(is.vector(cov)) colnames(res)[dim(res)[2]] <- colnames(X)[colnames(X) != "(Intercept)"]
+    }
+  }
+  res
  }
 
 namesBoot2bgpd <- function(object){
@@ -431,7 +439,7 @@ test.predict.gpd <- function(){
   xi <- cbind(rep(1,n),X[,2]) %*% co[3:4]
 
   checkEqualsNumeric(target=qgpd(1-1/M,sig,xi,u=0),
-                     current = unlist(predict(fit,M=M)),msg="predict.gpd: ret level estimation with covariates")
+                     current = predict(fit,M=M)[[1]][,1],msg="predict.gpd: ret level estimation with covariates")
  
 # check multiple M
   M <- c(10,50,100,500,1000)
@@ -440,7 +448,7 @@ test.predict.gpd <- function(){
   current <- predict(fit,M=M)
 
   for(i in 1:length(M)){
-    checkEqualsNumeric(target[,1],current[[1]],msg="predict.gpd: ret level estimation multiple M")
+    checkEqualsNumeric(target[,i],current[[i]][,1],msg="predict.gpd: ret level estimation multiple M")
   }
 
 # new data
@@ -451,13 +459,14 @@ test.predict.gpd <- function(){
   sig <- exp(co[1] + newX[[1]] * co[2])
   xi <- co[3] + newX[[2]] * co[4]
 
-  checkEqualsNumeric(target=qgpd(1-1/M,sig=sig,xi=xi,u=0),current=predict(fit,M=M,newdata=newX)[[1]],msg="predict.gpd: ret level ests with new data")
+  checkEqualsNumeric(target=qgpd(1-1/M,sig=sig,xi=xi,u=0),current=predict(fit,M=M,newdata=newX)[[1]][,1],msg="predict.gpd: ret level ests with new data")
 
-  checkEqualsNumeric(c(nx,3),dim(predict(fit,ci=TRUE,newdata=newX)[[1]]), msg="predict.gpd: dimension or return object for ci calc")
-  checkEqualsNumeric(c(nx,2),dim(predict(fit,se=TRUE,newdata=newX)[[1]]), msg="predict.gpd: dimension or return object for se calc") 
-  checkEqualsNumeric(c(nx,4),dim(predict(fit,se=TRUE,ci=TRUE,newdata=newX)[[1]]), msg="predict.gpd: dimension or return object for se and ci calc")
-  checkEquals(c("RL","2.5%","97.5%","se.fit"), colnames(predict(fit,se=TRUE,ci=TRUE)[[1]]), msg="predict.gpd: colnames of return obejct for se and ci calc, default alpha")
-  checkEquals(c("RL","5%","95%","se.fit"), colnames(predict(fit,se=TRUE,ci=TRUE,alpha=0.1)[[1]]), msg="predict.gpd: colnames of return obejct for se and ci calc, alpha=0.1")
+  checkEqualsNumeric(c(nx,5),dim(predict(fit,ci=TRUE,newdata=newX)[[1]]), msg="predict.gpd: dimension or return object for ci calc")
+  checkEqualsNumeric(c(nx,4),dim(predict(fit,se=TRUE,newdata=newX)[[1]]), msg="predict.gpd: dimension or return object for se calc") 
+  checkEqualsNumeric(c(nx,6),dim(predict(fit,se=TRUE,ci=TRUE,newdata=newX)[[1]]), msg="predict.gpd: dimension or return object for se and ci calc")
+
+  checkEquals(c("RL","2.5%","97.5%","se.fit","a","b"), colnames(predict(fit,se=TRUE,ci=TRUE)[[1]]), msg="predict.gpd: colnames of return obejct for se and ci calc, default alpha")
+  checkEquals(c("RL","5%","95%","se.fit","a","b"), colnames(predict(fit,se=TRUE,ci=TRUE,alpha=0.1)[[1]]), msg="predict.gpd: colnames of return obejct for se and ci calc, alpha=0.1")
 
 # alpha
   alpha <- c(0.01,0.05,0.1,0.2,0.5,0.9,0.99)
@@ -510,7 +519,7 @@ test.predict.gpd <- function(){
 test.predict.bgpd <- function(){
 # no covariates
   u <- 14
-  r.fit <- gpd(rain,th=u,method="sim")
+  r.fit <- gpd(rain,th=u,method="sim",trace=20000)
 
   checkEqualsNumeric(target=u,current=predict(r.fit,M=1/r.fit$map$rate)[[1]], msg="predict.bgpd: retreive threshold")
 
@@ -527,7 +536,7 @@ test.predict.bgpd <- function(){
   X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
   Y <- rgpd(n,exp(X[,1]),X[,2])
   X$Y <- Y
-  fit <- gpd(Y,data=X,phi=~a,xi=~b,th=0,method="sim")
+  fit <- gpd(Y,data=X,phi=~a,xi=~b,th=0,method="sim",trace=20000)
 
   sig <- apply(fit$param,1,function(v)exp(cbind(rep(1,n),X[,1]) %*% v[1:2]))
   xi <-  apply(fit$param,1,function(v)    cbind(rep(1,n),X[,2]) %*% v[3:4]) 
