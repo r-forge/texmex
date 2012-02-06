@@ -409,6 +409,32 @@ rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=
   res
 }
 
+################################################################################
+## Method functions
+
+print.rl.gpd <- function(object, digits){
+    nms <- names(object)
+    newnms <- paste("M =", substring(nms, 3), "predicted return level:\n")
+    lapply(1:length(object), function(i, o, title){
+                                 cat(title[i])
+                                 print(o[[i]])
+                                 cat("\n")
+                                 NULL}, o=object, title=newnms)
+    invisible(object)
+}
+
+show.rl.gpd <- summary.rl.gpd <- print.rl.gpd
+
+
+
+
+
+
+
+
+################################################################################
+## test.predict.gpd()
+
 test.predict.gpd <- function(){
 # no covariates
   u <- 14
@@ -597,3 +623,4 @@ test.predict.bgpd <- function(){
   checkEqualsNumeric(current = predict(fit,newX,type="lp")[,], target = unique(predict(fit,newX,unique.=FALSE,type="lp")[,]),msg="predict.bgpd: unique functioning for lin pred ests")
 
 }
+
