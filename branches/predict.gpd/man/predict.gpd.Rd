@@ -5,7 +5,7 @@
 \alias{predict.link.bgpd}
 \alias{rl.bgpd}
 \alias{predict.link.bootgpd}
-\alias(rl.bootgpd}
+\alias{rl.bootgpd}
 
 \title{Predict return levels from Generalized Pareto Distribution models, 
        or obtain the linear predictors.}
@@ -35,7 +35,7 @@ will be used.}
 
   \item{type}{
 The type of prediction, either ``return level'' (or ``rl'') or
-``link'' (or ``lp''). Defaults to \code{type = "return level"). When
+``link'' (or ``lp''). Defaults to \code{type = "return level")}. When
 a return level is wanted, the user can specify how high the level
 is via the \code{M} argument. If \code{type = ``link''} the linear
 predictor(s) for \code{phi} and/or \code{xi} are returned. 
@@ -122,4 +122,5 @@ to implement this method at a future date.
 
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
+}
 \keyword{ methods }
