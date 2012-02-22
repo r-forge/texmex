@@ -412,23 +412,23 @@ rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=
 ################################################################################
 ## Method functions
 
-print.rl.gpd <- function(object, digits=3){
-    nms <- names(object)
+print.rl.gpd <- function(x, digits=3){
+    nms <- names(x)
     newnms <- paste("M =", substring(nms, 3), "predicted return level:\n")
-    lapply(1:length(object), function(i, o, title){
+    lapply(1:length(x), function(i, o, title){
                                  cat(title[i])
                                  print(o[[i]], digits=digits)
                                  cat("\n")
-                                 NULL}, o=object, title=newnms)
-    invisible(object)
+                                 NULL}, o=x, title=newnms)
+    invisible(x)
 }
 
 show.rl.gpd <- summary.rl.gpd <- print.rl.gpd
 
-print.predict.link.gpd <- function(object, digits=3){
+print.predict.link.gpd <- function(x, digits=3){
     cat("Linear predictors:\n")
-    print(unclass(object))
-    invisible(object)
+    print(unclass(x))
+    invisible(x)
 }
 
 show.predict.link.gpd <- summary.predict.link.gpd <- print.predict.link.gpd

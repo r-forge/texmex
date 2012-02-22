@@ -1,6 +1,5 @@
 \name{predict.gpd}
 \alias{rl.gpd}
-\alias{predict.gpd}
 \alias{predict.link.gpd}
 \alias{predict.link.bgpd}
 \alias{rl.bgpd}
@@ -25,8 +24,17 @@ rl.bgpd(object, M = 1000, newdata = NULL, se.fit = FALSE, ci.fit = FALSE, alpha 
 predict.bootgpd(object, newdata = NULL, type = "return level", M = 1000, se.fit = FALSE, ci.fit = FALSE, alpha = 0.050, unique. = TRUE, all = FALSE, sumfun = NULL)
 predict.link.bootgpd(object, newdata = NULL, M = 1000, se.fit = FALSE, ci.fit = FALSE, alpha = 0.050, unique. = TRUE, all = FALSE, sumfun = NULL)
 rl.bootgpd(object, M = 1000, newdata = NULL, se.fit = FALSE, ci.fit = FALSE, alpha = 0.050, unique. = TRUE, all = FALSE, sumfun = NULL)
-}
+\method{print}{predict.link.gpd}(x, digits)
+\method{summary}{predict.link.gpd}(x, digits)
+\method{show}{predict.link.gpd}(x, digits)
+\method{plot}{predict.link.gpd}(object, main=NULL, pch=1, ptcol=2, cex=.75, linecol=4, cicol=1, polycol=15)
+\method{plot}{predict.link.bgpd}(object, type="median", ...)
+\method{plot}{predict.link.bootgpd}(object, type="median", ...)
+\method{plot}{rl.gpd}(object, xlab,main,pch=1, ptcol=2,cex=.75, linecol=4, cicol=0, poycol=15, smooth=TRUE, sameAXes=TRUE, type="median")
+\method{plot}{rl.bgpd}(object, xlab,main,pch=1, ptcol=2,cex=.75, linecol=4, cicol=0, poycol=15, smooth=TRUE, sameAXes=TRUE, type="median")
+\method{plot}{rl.bootgpd}(object, xlab,main,pch=1, ptcol=2,cex=.75, linecol=4, cicol=0, poycol=15, smooth=TRUE, sameAXes=TRUE, type="median")
 %- maybe also 'usage' for other objects documented here.
+}
 \arguments{
   \item{object}{
 An object of class \code{gpd}, \code{bgpd} or \code{bootgpd}.

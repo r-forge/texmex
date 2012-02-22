@@ -25,6 +25,7 @@
 \alias{gpd.delta}
 \alias{addCov}
 \alias{namesBoot2bgpd}
+\alias{plotRLgpd}
 \title{Internal functions for texmex}
 \description{Internal functions used by the \code{texmex} package.}
 
@@ -59,6 +60,7 @@ inv_Laplace(p)
 gpd.delta(a, m)
 addCov(res, X)
 namesBoot2bgpd(object)
+plotRLgpd(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange)
 }
 
 \arguments{
@@ -101,6 +103,9 @@ q1, q2, sill, D, k}{Arguments to independently coded test functions implementing
 \item{object}{Argument to \code{namesBoot2bgpd}. An object of class \code{bootgpd}.
      The function restructures a \code{bootgpd} object to resemble an object
      of class \code{bgpd} before passing it to \code{predict.bgpd}.}
+item{m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange}{Arugments to
+     \code{plotRLgpd} which is a worker function for \code{plotrl.gpd}, \code{plot.rl.gpd} and
+     related functions, and about which you will never want to know anything.}
 }
 \details{
 None of these functions are intended to be used explicitly.

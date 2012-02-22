@@ -1,3 +1,4 @@
+
 plotrl.gpd <- # intended as a diagnostic for a gpd fitted with no covariates. Called by plot.gpd
 function(object, alpha = .050,
          xlab, ylab, main,
