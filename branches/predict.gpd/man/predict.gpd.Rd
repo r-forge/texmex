@@ -1,4 +1,5 @@
 \name{predict.gpd}
+\alias{predict.gpd}
 \alias{rl.gpd}
 \alias{predict.link.gpd}
 \alias{predict.link.bgpd}
@@ -21,7 +22,7 @@
        or obtain the linear predictors.}
 
 \usage{
-predict.gpd(object, newdata = NULL, type = "return level", se.fit = FALSE, ci.fit = FALSE, M = 1000, alpha = 0.05, unique. = TRUE)
+predict.gpd(object, newdata = NULL, type = "return level", se.fit = FALSE, ci.fit = FALSE, M = 1000, alpha = 0.05, unique. = TRUE, ...)
 predict.link.gpd(object, newdata = NULL, type = "return level", se.fit = FALSE, ci.fit = FALSE, M = 1000, alpha = 0.05, unique. = TRUE, full.cov = FALSE)
 rl.gpd(object, M = 1000, newdata = NULL, se.fit = FALSE, ci.fit = FALSE, alpha = 0.050, unique. = TRUE)
 predict.bgpd(object, newdata = NULL, type = "return level", M = 1000, se.fit = FALSE, ci.fit = FALSE, alpha = 0.050, unique. = TRUE, all = FALSE, sumfun = NULL)
