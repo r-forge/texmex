@@ -22,7 +22,7 @@ predict.gpd <-
     # Get predictions for a gpd object. These can either be the linear predictors
     # or return levels.
 function(object, newdata=NULL, type="return level", se.fit=FALSE,
-         ci.fit=FALSE, M=1000, alpha=.050, unique.=TRUE){
+         ci.fit=FALSE, M=1000, alpha=.050, unique.=TRUE, ...){
     theCall <- match.call()
     
     res <- switch(type,
@@ -38,7 +38,7 @@ function(object, newdata=NULL, type="return level", se.fit=FALSE,
 ## Linear predictor functions for GPD
 
 predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
-                             alpha=.050, unique.=TRUE, full.cov=FALSE){
+                             alpha=.050, unique.=TRUE, full.cov=FALSE, ...){
 
     if (!is.null(newdata)){
         xi.fo <- object$call$xi
@@ -141,7 +141,7 @@ gpd.delta <- function(a, m){
 } 
 
 rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
-                   alpha=.050, unique.=TRUE){
+                   alpha=.050, unique.=TRUE, ...){
     co <- predict.link.gpd(object, newdata=newdata, unique.=unique., full.cov=TRUE)
     covs <- co[[2]] # list(phi.var=phi.var, xi.var=xi.var, covariances=covar)
     co <- co[[1]]
@@ -220,7 +220,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 
 predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000,
                          se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE,
-                         all=FALSE, sumfun=NULL){
+                         all=FALSE, sumfun=NULL, ...){
     theCall <- match.call()
         
     res <- switch(type,
@@ -237,7 +237,7 @@ predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000,
 }
 
 predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
-                              alpha=.050, unique.=TRUE, all=FALSE, sumfun=NULL){
+                              alpha=.050, unique.=TRUE, all=FALSE, sumfun=NULL, ...){
     if (!is.null(newdata)){
         xi.fo <- object$map$call$xi
         phi.fo <- object$map$call$phi
@@ -302,8 +302,8 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     res
 }
 
-rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
-                    ci.fit=FALSE, all=FALSE, alpha=.050, sumfun=NULL){
+rl.bgpd <- function(object, M, newdata=NULL, se.fit=FALSE,
+                    ci.fit=FALSE, alpha=.050, unique.=unique., all=FALSE, sumfun=NULL, ...){
     co <- predict.link.bgpd(object, newdata=newdata, unique.=unique., all=TRUE, sumfun=NULL)
 
     bgpdrl <- function(o, u, theta, m){
@@ -353,7 +353,7 @@ rl.bgpd <- function(object, M, newdata=NULL, unique.=unique., se.fit=FALSE,
 
 predict.bootgpd <- function(object, newdata=NULL, type="return level",
                             unique.=TRUE, ci.fit=FALSE, se.fit=FALSE, M=1000,
-                            all=FALSE, alpha=.050){
+                            all=FALSE, alpha=.050, ...){
     theCall <- match.call()
 
     res <- switch(type,
@@ -390,7 +390,7 @@ namesBoot2bgpd <- function(object){
 }
 
 predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
-                                 unique.=TRUE, all=FALSE, alpha=.050){
+                                 unique.=TRUE, all=FALSE, alpha=.050, ...){
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
   object <- namesBoot2bgpd(object)
@@ -399,8 +399,8 @@ predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALS
   res
 }
 
-rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=FALSE,
-                       unique.=TRUE, alpha=alpha){
+rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
+                        alpha=alpha, unique.=TRUE, all=FALSE, ...){
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
   object <- namesBoot2bgpd(object)
@@ -412,7 +412,7 @@ rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, all=
 ################################################################################
 ## Method functions
 
-print.rl.gpd <- function(x, digits=3){
+print.rl.gpd <- function(x, digits=3, ...){
     nms <- names(x)
     newnms <- paste("M =", substring(nms, 3), "predicted return level:\n")
     lapply(1:length(x), function(i, o, title){
@@ -423,16 +423,21 @@ print.rl.gpd <- function(x, digits=3){
     invisible(x)
 }
 
-show.rl.gpd <- summary.rl.gpd <- print.rl.gpd
+show.rl.gpd <- print.rl.gpd
+summary.rl.gpd <- function(object, ...){
+    print.rl.gpd(object, ...)
+}
 
-print.predict.link.gpd <- function(x, digits=3){
+print.predict.link.gpd <- function(x, digits=3, ...){
     cat("Linear predictors:\n")
     print(unclass(x))
     invisible(x)
 }
 
-show.predict.link.gpd <- summary.predict.link.gpd <- print.predict.link.gpd
-
+show.predict.link.gpd <- print.predict.link.gpd
+summary.predict.link.gpd <- function(object, ...){
+    print(object, ...)
+}
 
 ################################################################################
 ## test.predict.gpd()

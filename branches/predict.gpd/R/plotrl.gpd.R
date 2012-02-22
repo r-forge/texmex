@@ -37,10 +37,10 @@ function(object, alpha = .050,
     invisible(list(m=m, xm=xm))
 }
 
-plot.rl.gpd <- function(object, # method for rl.(boot or b)gpd object, which may have covariates.  Plots return level for each unique row in design matrix
+plot.rl.gpd <- function(x, # method for rl.(boot or b)gpd object, which may have covariates.  Plots return level for each unique row in design matrix
          xlab, ylab, main,
          pch= 1, ptcol =2 , cex=.75, linecol = 4 ,
-         cicol = 0, polycol = 15, smooth = TRUE, sameAxes=TRUE, type="median" ){
+         cicol = 0, polycol = 15, smooth = TRUE, sameAxes=TRUE, type="median", ...){
     if (missing(xlab) || is.null(xlab)) { xlab <- "Return period" }
     if (missing(ylab) || is.null(ylab)) { ylab <- "Return level" }
     if (missing(main) || is.null(main)) { 
@@ -54,13 +54,13 @@ plot.rl.gpd <- function(object, # method for rl.(boot or b)gpd object, which may
       }
     }
 
-    nm <- length(names(object))
+    nm <- length(names(x))
     if(nm < 2) {
       stop("Need to have more than one value of M at which to plot return level curve")
     }
-    nd <- dim(object[[1]])[2]
-    ncov <- length(unlist(object)) / (nm * nd)
-    ValNames <- colnames(object[[1]])
+    nd <- dim(x[[1]])[2]
+    ncov <- length(unlist(x)) / (nm * nd)
+    ValNames <- colnames(x[[1]])
 
     if(!SetMain & length(main) != ncov){
       stop("main must be length 1 or number of unique covariates for prediction")
@@ -70,14 +70,14 @@ plot.rl.gpd <- function(object, # method for rl.(boot or b)gpd object, which may
       stop("Please use ci.fit=TRUE in call to predict, to calculate confidence intervals")
     }
       
-    Array <- array(unlist(object),c(ncov,nd,nm),dimnames=list(NULL,ValNames,names(object)))
+    Array <- array(unlist(x),c(ncov,nd,nm),dimnames=list(NULL,ValNames,names(x)))
 
     Array <- Array[,dimnames(Array)[[2]] != "se.fit",] # just in case se was calculated!
 
     m <- as.numeric(substring(dimnames(Array)[[3]],first=3))
    
 
-    if( class(object) == "rl.bgpd" | class(object) == "rl.bootgpd"){
+    if( class(x) == "rl.bgpd" | class(x) == "rl.bootgpd"){
       if(casefold(type) == "median"){
         Array <- Array[,c(2,1,3),]
       } else if(casefold(type) == "mean") {
