@@ -1,11 +1,14 @@
 \name{predict.gpd}
+\alias{rl.gpd}
 \alias{predict.gpd}
 \alias{predict.link.gpd}
-\alias{rl.gpd}
 \alias{predict.link.bgpd}
 \alias{rl.bgpd}
 \alias{predict.link.bootgpd}
 \alias{rl.bootgpd}
+\alias{predict.bgpd}
+\alias{predict.link.bgpd}
+\alias{predict.bootgpd}
 
 \title{Predict return levels from Generalized Pareto Distribution models, 
        or obtain the linear predictors.}

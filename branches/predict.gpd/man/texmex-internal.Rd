@@ -23,6 +23,8 @@
 \alias{Dcond}
 \alias{estimate_HT}
 \alias{gpd.delta}
+\alias{addCov}
+\alias{namesBoot2bgpd}
 \title{Internal functions for texmex}
 \description{Internal functions used by the \code{texmex} package.}
 
@@ -55,6 +57,8 @@ initial_posneg(D,...)
 estimate_HT_KPT_joint_posneg_nm(pars,x,listr,params=TRUE,...,k=3)
 inv_Laplace(p)
 gpd.delta(a, m)
+addCov(res, X)
+namesBoot2bgpd(object)
 }
 
 \arguments{
@@ -91,6 +95,12 @@ gpd.delta(a, m)
 q1, q2, sill, D, k}{Arguments to independently coded test functions implementing constrained estimation of the H+T2004 conditional dependence model with Laplace margins.}
 \item{a, m}{Arguments to \code{gpd.delta} which is used internally to find
   approximate standard errors for return levels for gpd-type objects.}
+\item{res, X}{Arguments to \code{addCov}. Add covariates to the partial results
+       from a call to \code{predict.gpd}. \code{res} is the partial results
+        and \code{X} is a design matrix.}
+\item{object}{Argument to \code{namesBoot2bgpd}. An object of class \code{bootgpd}.
+     The function restructures a \code{bootgpd} object to resemble an object
+     of class \code{bgpd} before passing it to \code{predict.bgpd}.}
 }
 \details{
 None of these functions are intended to be used explicitly.

@@ -28,6 +28,7 @@
 \alias{test.info.gpd}
 \alias{test.plot.mex}
 \alias{test.revTransform}
+\alias{test.predict.gpd}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Validate the texmex package
