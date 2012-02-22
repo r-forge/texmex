@@ -1,8 +1,8 @@
 \name{texmex-internal}
 \alias{hist.gpd}
-\alias{rl.gpd}
 \alias{qqgpd}
 \alias{ppgpd}
+\alias(plotrl.gpd)
 \alias{u2gpd}
 \alias{revTransform}
 \alias{mexTransform}
