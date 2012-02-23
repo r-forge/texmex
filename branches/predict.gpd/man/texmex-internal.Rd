@@ -2,7 +2,7 @@
 \alias{hist.gpd}
 \alias{qqgpd}
 \alias{ppgpd}
-\alias(plotrl.gpd)
+\alias{plotrl.gpd}
 \alias{u2gpd}
 \alias{revTransform}
 \alias{mexTransform}
@@ -26,12 +26,12 @@
 \alias{addCov}
 \alias{namesBoot2bgpd}
 \alias{plotRLgpd}
+
 \title{Internal functions for texmex}
 \description{Internal functions used by the \code{texmex} package.}
 
 \usage{
 \method{hist}{gpd}(x, xlab, ylab, main, ...)
-rl.gpd(object, alpha = 0.05, RetPeriodRange=NULL, xlab, ylab, main, pch=1, col=2, cex=0.75, linecol=4, cicol=0, polycol=15, smooth=TRUE)
 qqgpd(object, nsim = 1000, alpha = 0.05, xlab, ylab, main, plot = TRUE,
      ylim = "auto", pch=1, col = 2, cex = 0.75, linecol = 4, intcol = 0,
      polycol = 15)
@@ -57,18 +57,15 @@ profile_minmax_joint_posneg_KT (pars,listdata,u,q1=0,q2=1,...,sill=-10^(40))
 initial_posneg(D,...)
 estimate_HT_KPT_joint_posneg_nm(pars,x,listr,params=TRUE,...,k=3)
 inv_Laplace(p)
-gpd.delta(a, m)
-addCov(res, X)
-namesBoot2bgpd(object)
-plotRLgpd(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange)
+gpd.delta(A, K)
+addCov(res,X)
+namesBoot2bgpd(bootobject)
+plotRLgpd(M,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange)
 }
 
 \arguments{
 \item{x, object, data}{Object to be used by plot functions, vector to be converted.}
-\item{xlab, ylab, ylim, main, pch, col, cex, linecol, intcol, cicol, polycol, ...}{Arguments to plot functions.}
-\item{RetPeriodRange}{ Vector, length two: plotting range for return period; units are numbers of observations.}
-\item{smooth}{Whether or not to smooth simulated confidence intervlas. 
-    Defaults to \code{smooth = TRUE}.}
+\item{xlab, ylab, ylim, main, pch, col, cex, linecol, intcol, polycol, ...}{Arguments to plot functions.}
 \item{alpha}{Control nominal coverage of condfidence intervals. Defaults to \code{alpha = 0.05}.}
 \item{nsim}{Number of simulated datasets to use in computing confidence intervals.}
 \item{plot}{Whether or not to plot the result.}
@@ -95,18 +92,13 @@ plotRLgpd(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xran
 \item{yex, ydep}{Data for model estimation: \code{yex} is the explanatory variable on which the model conditions, and \code{ydep} is the dependent variable.}
 \item{par, listr, silly, list, pars, params, c, d, zi, zk, lev, Zj, Zk, Zestfun, listdata,
 q1, q2, sill, D, k}{Arguments to independently coded test functions implementing constrained estimation of the H+T2004 conditional dependence model with Laplace margins.}
-\item{a, m}{Arguments to \code{gpd.delta} which is used internally to find
+\item{A, K}{Arguments to \code{gpd.delta} which is used internally to find
   approximate standard errors for return levels for gpd-type objects.}
-\item{res, X}{Arguments to \code{addCov}. Add covariates to the partial results
-       from a call to \code{predict.gpd}. \code{res} is the partial results
-        and \code{X} is a design matrix.}
-\item{object}{Argument to \code{namesBoot2bgpd}. An object of class \code{bootgpd}.
-     The function restructures a \code{bootgpd} object to resemble an object
-     of class \code{bgpd} before passing it to \code{predict.bgpd}.}
-item{m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange}{Arugments to
-     \code{plotRLgpd} which is a worker function for \code{plotrl.gpd}, \code{plot.rl.gpd} and
-     related functions, and about which you will never want to know anything.}
+\item{res,X}{ Arguments to \code{addCov} which is used internally to bind covariates on to rows of reported return levels or linear predictors.}
+\item{bootobject}{ Argument to \code{namesBoot2bgpd} which restructures an object of class bootgpd to resemble one of class bgpd, which can then use methods for the bgpd class.}
+\item{M,xm,cicol,ptcol,n,xdat,smooth,xrange,yrange}{Arguments to plotRLgpd which is a worker function, does the actual plotting for \code{\link{plotrl.gpd}}, \code{\link{plot.rl.gpd}}, \code{\link{plot.rl.bgpd}}.}
 }
+
 \details{
 None of these functions are intended to be used explicitly.
 
