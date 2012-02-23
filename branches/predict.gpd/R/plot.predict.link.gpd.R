@@ -1,4 +1,4 @@
-plot.predict.link.gpd <- function(x, main=NULL,
+plot.lp.gpd <- function(x, main=NULL,
          pch= 1, ptcol =2 , cex=.75, linecol = 4 ,
          cicol = 1, polycol = 15, ...){
 
@@ -46,8 +46,8 @@ plot.predict.link.gpd <- function(x, main=NULL,
   invisible()
 }
 
-plot.predict.link.bgpd <- function(x, type="median", ...){
-# re-format to same column structure as predict.link.gpd x
+plot.lp.bgpd <- function(x, type="median", ...){
+# re-format to same column structure as lp.gpd x
   if( casefold(type) == "median"){
     x <- x[,c(2,6,3,4,7,8,9:dim(x)[2])]
   } else if(casefold(type) == "mean") {
@@ -58,12 +58,12 @@ plot.predict.link.bgpd <- function(x, type="median", ...){
   
   colnames(x)[1:6] <-  c("phi", "xi", "phi.lo", "phi.hi", "xi.lo", "xi.hi")
 
-  plot.predict.link.gpd(x,...)
+  plot.lp.gpd(x,...)
 }
 
-plot.predict.link.bootgpd <- plot.predict.link.bgpd
+plot.lp.bootgpd <- plot.lp.bgpd
 
-test.plot.predict.link.gpd <- function(){
+test.plot.lp.gpd <- function(){
   n <- 100
   M <- 1000
   X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
