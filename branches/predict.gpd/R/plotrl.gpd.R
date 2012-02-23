@@ -1,4 +1,3 @@
-
 plotrl.gpd <- # intended as a diagnostic for a gpd fitted with no covariates. Called by plot.gpd
 function(object, alpha = .050,
          xlab, ylab, main,
@@ -66,28 +65,43 @@ plot.rl.gpd <- function(x, # method for rl.(boot or b)gpd object, which may have
       stop("main must be length 1 or number of unique covariates for prediction")
     }
     
-    if(length(ValNames) == 1 |  length(grep("%",ValNames)) <2){
+    if(length(ValNames) == 1 |  length(grep("%",ValNames)) < 2){
       stop("Please use ci.fit=TRUE in call to predict, to calculate confidence intervals")
     }
       
     Array <- array(unlist(x),c(ncov,nd,nm),dimnames=list(NULL,ValNames,names(x)))
-
-    Array <- Array[,dimnames(Array)[[2]] != "se.fit",] # just in case se was calculated!
+      
+    if( class(x) == "rl.gpd"){
+      if(any(dimnames(x[[1]])[[2]] == "se.fit")){
+        which <- dimnames(x[[1]])[[2]] != "se.fit"
+        nd <- nd-1
+        ValNames <- ValNames[which]
+        Unlist <- unlist(x)[rep(which,each=ncov)]
+      } else {
+        Unlist <- unlist(x)
+      }
+    } else if(class(x) == "rl.bgpd" | class(x) == "rl.bootgpd"){
+        if(casefold(type) == "median"){
+          which <- dimnames(x[[1]])[[2]] != "Mean"
+        } else if(casefold(type) == "mean") {
+          which <- dimnames(x[[1]])[[2]] != "50%"
+        } else {
+          stop("type must be \"mean\" or \"median\" ")
+        }
+        nd <- nd-1
+        ValNames <- ValNames[which]
+        Unlist <- unlist(x)[rep(which,each=ncov)]
+    }
+     
+    Array <- array(Unlist,c(ncov,nd,nm),dimnames=list(NULL,ValNames,names(x)))
 
     m <- as.numeric(substring(dimnames(Array)[[3]],first=3))
-   
 
-    if( class(x) == "rl.bgpd" | class(x) == "rl.bootgpd"){
-      if(casefold(type) == "median"){
-        Array <- Array[,c(2,1,3),]
-      } else if(casefold(type) == "mean") {
-        Array <- Array[,c(4,1,3),]
-      } else {
-        stop("type must be \"mean\" or \"median\" ")
-      }
+    if(ncov>1){
+      covnames <- dimnames(Array)[[2]][-(1:3)]
+    } else {
+      covnames <- ""
     }
-
-    covnames <- dimnames(Array)[[2]][-(1:3)]
 
     if(sameAxes){
        yrange <- range(Array)
@@ -115,19 +129,19 @@ plot.rl.gpd <- function(x, # method for rl.(boot or b)gpd object, which may have
 
 plot.rl.bootgpd <- plot.rl.bgpd <- plot.rl.gpd
 
-plotRLgpd <- function(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange){ 
+plotRLgpd <- function(M,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,ylab,main,xrange,yrange){ 
 # worker function - called by plotrl.gpd, plot.rl.gpd, plot.rl.bgpd
 
-    o <- order(m) # in case the return period are not in ascending order.
-    m <- m[o]
+    o <- order(M) # in case the return period are not in ascending order.
+    M <- M[o]
     xm <- xm[o,]
     
-    plot(m, xm[,1], log = "x", type = "n",
+    plot(M, xm[,1], log = "x", type = "n",
          xlim=xrange, ylim=yrange, xlab = xlab, ylab = ylab, main = main)
 
       if (smooth) {
-        splo <- spline(log(m), xm[,2] , 200)
-        sphi <- spline(log(m), xm[,3] , 200)
+        splo <- spline(log(M), xm[,2] , 200)
+        sphi <- spline(log(M), xm[,3] , 200)
         if ( polycol != 0 ) {
             polygon( exp(c( splo$x, rev( sphi$x ) )),
 	                       c( splo$y, rev( sphi$y ) ),
@@ -137,16 +151,16 @@ plotRLgpd <- function(m,xm,polycol,cicol,linecol,ptcol,n,xdat,pch,smooth,xlab,yl
          lines( exp(sphi$x), sphi$y, col = cicol )
       } else{
         if (polycol != 0){
-            polygon(c( m,        rev( m)),
+            polygon(c( M,        rev( M)),
                     c(xm[,2],rev(xm[,3])),
                     col=polycol, border = FALSE) # Close polygon
         } else {
-            lines(m, xm[,2], col = cicol)
-            lines(m, xm[,3], col = cicol)
+            lines(M, xm[,2], col = cicol)
+            lines(M, xm[,3], col = cicol)
         }
       }      
 	
-      lines(m, xm[,1], col = linecol[ 1 ] )
+      lines(M, xm[,1], col = linecol[ 1 ] )
 
     # Add observed data to the plot
     if(!missing(xdat) & !missing(n)){
@@ -181,8 +195,8 @@ test.plotrl.gpd <- function()
   newX <- data.frame(a=runif(nx,0,5),b=runif(nx,-0.1,0.5))  
   rl <- predict(fit,newdata=newX,ci=TRUE,se=TRUE,M=M)
   par(mfrow=n2mfrow(nx))
-  plot(rl,sameAxes=TRUE,main=paste("Validation suite plot",1:nx))
-  plot(rl,sameAxes=FALSE)
+  plot(rl,sameAxes=TRUE,main=paste("Validation suite plot",1:nx),polycol="cyan")
+  plot(rl,sameAxes=FALSE,polycol="magenta")
     
   checkException(plot(predict(fit,newdata=newX,ci=FALSE)),silent=TRUE,msg="plotrl.gpd: failure if no conf ints supplied")
   
