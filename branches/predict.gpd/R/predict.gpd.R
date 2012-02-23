@@ -7,13 +7,14 @@
 # predict.gpd
 # predict.bgpd
 # predict.bootgpd
-# predict.link.gpd
 # rl
 # rl.gpd
-# predict.link.bgpd
 # rl.bgpd
-# predict.link.bootgpd
 # rl.bootgpd
+# predict.link
+# predict.link.gpd
+# predict.link.bgpd
+# predict.link.bootgpd
 
 ################################################################################
 ## gpd
@@ -21,8 +22,8 @@
 predict.gpd <-
     # Get predictions for a gpd object. These can either be the linear predictors
     # or return levels.
-function(object, newdata=NULL, type="return level", se.fit=FALSE,
-         ci.fit=FALSE, M=1000, alpha=.050, unique.=TRUE, ...){
+function(object, M=1000, newdata=NULL, type="return level", se.fit=FALSE,
+         ci.fit=FALSE, alpha=.050, unique.=TRUE, ...){
     theCall <- match.call()
     
     res <- switch(type,
@@ -117,24 +118,28 @@ predict.link.gpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 ## Will want to get return levels when using GEV rather than GPD, so make
 ## rl generic
 
-rl <- function(object, M, newdata, se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE, ...){
+rl <- function(object, M = 1000, newdata = NULL, se.fit = FALSE, ci.fit = FALSE, alpha = 0.050, unique. = TRUE, ...){
     UseMethod("rl")
 }
 
-gpd.delta <- function(a, m){
+predict.link <- function(object, newdata = NULL, se.fit = FALSE, ci.fit = FALSE, alpha = 0.050, unique. = TRUE, ...){
+    UseMethod("predict.link")
+}
+
+gpd.delta <- function(A, K){
    # This is not exact if a prior (penalty) function is used, but
    # the CI is approximate anyway.
         
-    out <- matrix(0, nrow=3, ncol=length(m))
+    out <- matrix(0, nrow=3, ncol=length(K))
         
-    if (a[3] == 0){ # exponential case
-        out[1,] <- exp(a[2]) / a[1]
-        out[2,] <- exp(a[2]) * log(m * a[1])
+    if (A[3] == 0){ # exponential case
+        out[1,] <- exp(A[2]) / A[1]
+        out[2,] <- exp(A[2]) * log(K * A[1])
     } else {
-        out[1,] <- exp(a[2]) * m^a[3] * a[1]^(a[3] - 1)
-        out[2,] <- exp(a[2]) / a[3] * ((m*a[1])^a[3] - 1) 
-        out[3,] <- -exp(a[2]) / (a[3]*a[3]) * ( (m * a[1] )^a[3] - 1 ) +
-                   exp(a[2]) / a[3] * (m * a[1])^a[3] * log(m * a[1])
+        out[1,] <- exp(A[2]) * K^A[3] * A[1]^(A[3] - 1)
+        out[2,] <- exp(A[2]) / A[3] * ((K*A[1])^A[3] - 1) 
+        out[3,] <- -exp(A[2]) / (A[3]*A[3]) * ( (K * A[1] )^A[3] - 1 ) +
+                   exp(A[2]) / A[3] * (K * A[1])^A[3] * log(K * A[1])
     } 
     
    out
@@ -146,7 +151,11 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     covs <- co[[2]] # list(phi.var=phi.var, xi.var=xi.var, covariances=covar)
     co <- co[[1]]
     X <- co[,-(1:2)]
- 
+    if(is.null(dim(X))){
+      X <- matrix(X)
+      dimnames(X) <- list(dimnames(co)[[1]],dimnames(co)[[2]][-(1:2)])
+    }
+
     gpdrl <- function(u, theta, phi, xi, m){
         res <- u + exp(phi) / xi *((m * theta)^xi -1) 
         cbind(RL=res)
@@ -156,7 +165,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                   u=object$threshold, theta=object$rate, phi=co[,1], xi=co[,2])
 
     getse <- function(o, co, M){
-        dxm <- lapply(split(co, 1:nrow(co)), gpd.delta, m=M)
+        dxm <- lapply(split(co, 1:nrow(co)), gpd.delta, K=M)
 
         V <- lapply(1:nrow(co),
                     function(i, x, rate, n){
@@ -218,7 +227,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
 ################################################################################
 ## bgpd
 
-predict.bgpd <- function(object, newdata=NULL, type="return level", M=1000,
+predict.bgpd <- function(object, M=1000, newdata=NULL, type="return level", 
                          se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE,
                          all=FALSE, sumfun=NULL, ...){
     theCall <- match.call()
@@ -271,7 +280,7 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     if (ci.fit){
         if (is.null(sumfun)){
             sumfun <- function(x){
-                c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x))
+                c(mean(x), quantile(x, prob=c(.50, alpha/2,  1 - alpha/2)) )
             }
             neednames <- TRUE
         } else { 
@@ -281,9 +290,8 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
         res <- t(sapply(res, function(x, fun){ apply(x, 2, sumfun) }, fun=sumfun))
         
         if (neednames){
-            nms <- c(paste(100*alpha/2, "%", sep = ""),
-                    "50%", paste(100*(1-alpha/2), "%", sep = ""),
-                    "Mean")
+            nms <- c("Mean","50%", paste(100*alpha/2, "%", sep = ""),
+                    paste(100*(1-alpha/2), "%", sep = ""))
 
             colnames(res) <- c(paste("phi:", nms), paste("xi:", nms))
         }
@@ -302,10 +310,16 @@ predict.link.bgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
     res
 }
 
-rl.bgpd <- function(object, M, newdata=NULL, se.fit=FALSE,
-                    ci.fit=FALSE, alpha=.050, unique.=unique., all=FALSE, sumfun=NULL, ...){
-    co <- predict.link.bgpd(object, newdata=newdata, unique.=unique., all=TRUE, sumfun=NULL)
+rl.bgpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE, all=FALSE, sumfun=NULL){
 
+    co <- predict.link.bgpd(object, newdata=newdata, unique.=unique., all=TRUE, sumfun=NULL)
+    Covs <- predict.link.bgpd(object, newdata=newdata, unique.=unique., sumfun=NULL)
+    X <- Covs[,-(1:2)]
+    if(is.null(dim(X))){
+      X <- matrix(X)
+      dimnames(X) <- list(dimnames(Covs)[[1]],dimnames(Covs)[[2]][-(1:2)])
+    }
+    
     bgpdrl <- function(o, u, theta, m){
         res <- u + exp(o[, 1]) / o[, 2] *((m * theta)^o[, 2] -1) 
         cbind(RL=res)
@@ -320,7 +334,7 @@ rl.bgpd <- function(object, M, newdata=NULL, se.fit=FALSE,
         if (ci.fit){
             if (is.null(sumfun)){
                 sumfun <- function(x){
-                    c(quantile(x, prob=c(alpha/2, .50, 1 - alpha/2)), mean(x))
+                    c(mean(x), quantile(x, prob=c(.50, alpha/2,  1 - alpha/2)))
                 }
                 neednames <- TRUE
             } else { 
@@ -328,9 +342,8 @@ rl.bgpd <- function(object, M, newdata=NULL, se.fit=FALSE,
             }
             res <- t(apply(res, 2, sumfun))
             if (neednames){
-                colnames(res) <- c(paste(100*alpha/2, "%", sep = ""),
-                                   "50%", paste(100*(1-alpha/2), "%", sep = ""),
-                                   "Mean")
+                colnames(res) <- c("Mean", "50%", paste(100*alpha/2, "%", sep = ""),
+                                   paste(100*(1-alpha/2), "%", sep = ""))
             }
 
         } # Close if (ci.fit
@@ -343,6 +356,16 @@ rl.bgpd <- function(object, M, newdata=NULL, se.fit=FALSE,
     }
     
     res <- lapply(M, getrl, co=co, u=object$threshold, theta=object$map$rate, ci.fit=ci.fit, alpha=alpha, all=all)
+    
+    if(!all){
+      cov.fun <- function(i,res){
+        wh <- res[[i]]
+        wh <- addCov(wh,X)
+        wh
+      }
+      res <- lapply(1:length(M), cov.fun,res=res)
+    }
+    
     names(res) <- paste("M.", M, sep = "")
     oldClass(res) <- "rl.bgpd"
     res
@@ -351,20 +374,20 @@ rl.bgpd <- function(object, M, newdata=NULL, se.fit=FALSE,
 ################################################################################
 ## bootgpd
 
-predict.bootgpd <- function(object, newdata=NULL, type="return level",
-                            unique.=TRUE, ci.fit=FALSE, se.fit=FALSE, M=1000,
-                            all=FALSE, alpha=.050, ...){
+predict.bootgpd <- function(object, M=1000, newdata=NULL, type="return level", 
+                            se.fit=FALSE, ci.fit=FALSE, alpha=.050, unique.=TRUE, 
+                            all=FALSE, sumfun=NULL, ...){
     theCall <- match.call()
 
     res <- switch(type,
-                  "rl" = , "return level" = rl.bootgpd(object, M, newdata=newdata,
-                                                       unique.=TRUE,
+                  "rl" = , "return level" = rl.bootgpd(object, newdata=newdata, M=M, 
                                                        se.fit=se.fit, ci.fit=ci.fit,
-                                                       all=all, alpha=alpha),
+                                                       alpha=alpha, unique.=TRUE,
+                                                       all=all, sumfun=sumfun),
                   "lp" = , "link" = predict.link.bootgpd(object, newdata=newdata,
-                                                         unique.=TRUE,
-                                                         se.fit=se.fit, ci.fit=ci.fit,
-                                                         all=all, alpha=alpha)
+                                                         se.fit=se.fit, ci.fit=ci.fit, 
+                                                         alpha=alpha, unique.=TRUE,
+                                                         all=all, sumfun=sumfun)
                   )
     res
 
@@ -376,35 +399,38 @@ addCov <- function(res,X){ # used in predict.link.* to add covariates to columns
        cov <- X[,colnames(X) != "(Intercept)"]
        res <- cbind(res,cov)
        if(is.vector(cov)) colnames(res)[dim(res)[2]] <- colnames(X)[colnames(X) != "(Intercept)"]
+    } else {
+      if( any(X != 1) ){
+        res <- cbind(res,X)
+      }
     }
   }
   res
  }
 
-namesBoot2bgpd <- function(object){
-    names(object) <- c("call", "param", "original", "map")
-    object$X.phi <- object$map$X.phi
-    object$X.xi <- object$map$X.xi
-    object$threshold <- object$map$threshold
-    object
+namesBoot2bgpd <- function(bootobject){
+    names(bootobject) <- c("call", "param", "original", "map")
+    bootobject$X.phi <- bootobject$map$X.phi
+    bootobject$X.xi <- bootobject$map$X.xi
+    bootobject$threshold <- bootobject$map$threshold
+    bootobject
 }
 
-predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
-                                 unique.=TRUE, all=FALSE, alpha=.050, ...){
+predict.link.bootgpd <- function(object, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, alpha=.050,
+                                 unique.=TRUE, all=FALSE, sumfun=NULL){
     # This should just be the same as for a bgpd object, but some
     # names and stuff are different.
   object <- namesBoot2bgpd(object)
-  res <- predict.link.bgpd(object, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,alpha=alpha)
+  res <- predict.link.bgpd(object, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique., alpha=alpha, sumfun=sumfun)
   oldClass(res) <- "predict.link.bootgpd"
   res
 }
 
-rl.bootgpd <- function(object, M, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
-                        alpha=alpha, unique.=TRUE, all=FALSE, ...){
+rl.bootgpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE, alpha=0.050, unique.=TRUE, all=FALSE, sumfun=NULL){
     # This should just be the same as for a bgpd object, but some
-    # names and stuff are different.
+    # names are different.
   object <- namesBoot2bgpd(object)
-  res <- rl.bgpd(object, M=M, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit, all=all, unique.=unique.,alpha=alpha)
+  res <- rl.bgpd(object, M=M, newdata=newdata, se.fit=se.fit, ci.fit=ci.fit,alpha=alpha, unique.=unique., all=all, sumfun=sumfun)
   oldClass(res) <- "rl.bootgpd"
   res
 }
@@ -428,7 +454,10 @@ summary.rl.gpd <- function(object, ...){
     print.rl.gpd(object, ...)
 }
 
-print.predict.link.gpd <- function(x, digits=3, ...){
+show.rl.bgpd    <- summary.rl.bgpd    <- print.rl.bgpd    <- print.rl.gpd
+show.rl.bootgpd <- summary.rl.bootgpd <- print.rl.bootgpd <- print.rl.gpd
+
+print.predict.link.gpd <- function(x, digits=3,...){
     cat("Linear predictors:\n")
     print(unclass(x))
     invisible(x)
@@ -438,6 +467,10 @@ show.predict.link.gpd <- print.predict.link.gpd
 summary.predict.link.gpd <- function(object, ...){
     print(object, ...)
 }
+
+show.predict.link.bgpd    <- summary.predict.link.bgpd    <- print.predict.link.bgpd    <- print.predict.link.gpd
+show.predict.link.bootgpd <- summary.predict.link.bootgpd <- print.predict.link.bootgpd <- print.predict.link.gpd
+
 
 ################################################################################
 ## test.predict.gpd()
@@ -451,6 +484,9 @@ test.predict.gpd <- function(){
 
   checkEqualsNumeric(target=u,current = predict(r.fit,M=1/r.fit$rate)[[1]],msg="predict.gpd: retrieve threshold")
 
+  checkEquals(target=predict(r.fit), current=rl(r.fit),msg="predict.gpd: predict with type=rl gives same as direct call to rl with default arguments")
+  checkEquals(target=predict(r.fit,type="lp"), current=predict.link(r.fit),msg="predict.gpd: predict with type=rl gives same as direct call to rl with default arguments")  
+  
   t.fit <- r.fit
   t.fit$rate <- 1
   prob <- c(0.5,0.9,0.95,0.99,0.999)
@@ -463,6 +499,41 @@ test.predict.gpd <- function(){
 
   n <- 1000
   M <- 1000
+  
+# boundary cases with single covariates in only one parameter
+
+  xi <- 0.05
+  X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
+  Y <- rgpd(n,exp(X[,1]),xi)
+  X$Y <- Y
+  fit <- gpd(Y,data=X,phi=~a,th=0)
+  co <- coef(fit)
+  xi <- co[3]
+  sig <- exp(cbind(rep(1,n),X[,1]) %*% co[1:2])
+  pred <- predict(fit,M=M)
+  
+  checkEqualsNumeric(target=X$a,current=pred[[1]][,-1],msg="predict.gpd: ret level correct reporting of covariates for single cov in phi only")
+  checkEqualsNumeric(target=qgpd(1-1/M,sig,xi,u=0),
+                     current = pred[[1]][,1],msg="predict.gpd: ret level estimation with covariates in phi only")
+ 
+  sig <- 2
+  X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
+  Y <- rgpd(n,sig,X[,2])
+  X$Y <- Y
+  fit <- gpd(Y,data=X,xi=~b,th=0)
+  co <- coef(fit)
+  sig <- exp(co[1])
+  xi <- cbind(rep(1,n),X[,2]) %*% co[2:3]
+  pred <- predict(fit,M=M)
+  
+  checkEqualsNumeric(target=X$b,current=pred[[1]][,-1],msg="predict.gpd: ret level correct reporting of covariates for single cov in xi only")
+  checkEqualsNumeric(target=qgpd(1-1/M,sig,xi,u=0),
+                     current = pred[[1]][,1],msg="predict.gpd: ret level estimation with covariates in xi only")
+ 
+# covariates in both parameters
+
+  n <- 1000
+  M <- 1000
   X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
   Y <- rgpd(n,exp(X[,1]),X[,2])
   X$Y <- Y
@@ -472,7 +543,7 @@ test.predict.gpd <- function(){
   xi <- cbind(rep(1,n),X[,2]) %*% co[3:4]
 
   checkEqualsNumeric(target=qgpd(1-1/M,sig,xi,u=0),
-                     current = predict(fit,M=M)[[1]][,1],msg="predict.gpd: ret level estimation with covariates")
+                     current = predict(fit,M=M)[[1]][,1],msg="predict.gpd: ret level estimation with covariates in phi and xi")
  
 # check multiple M
   M <- c(10,50,100,500,1000)
@@ -516,23 +587,23 @@ test.predict.gpd <- function(){
 
   checkEqualsNumeric(target = cbind(co[1] + newX[[1]] * co[2],
                                     co[3] + newX[[2]] * co[4]),
-                     current = predict(fit,newX,type="lp")[,1:2], msg="predict.gpd: linear predictors")
+                     current = predict(fit,newdata=newX,type="lp")[,1:2], msg="predict.gpd: linear predictors")
 
-  checkEqualsNumeric(target = c(nx,6),dim(predict(fit,newX,se=TRUE,type="lp")), msg="predict.gpd: dimension of return object, linear predictor, se calc")
-  checkEqualsNumeric(target = c(nx,8),dim(predict(fit,newX,ci=TRUE,type="lp")), msg="predict.gpd: dimension of return object, linear predictor, ci calc")
+  checkEqualsNumeric(target = c(nx,6),dim(predict(fit,newdata=newX,se=TRUE,type="lp")), msg="predict.gpd: dimension of return object, linear predictor, se calc")
+  checkEqualsNumeric(target = c(nx,8),dim(predict(fit,newdata=newX,ci=TRUE,type="lp")), msg="predict.gpd: dimension of return object, linear predictor, ci calc")
   
   name <- c("phi", "xi", "phi.lo", "phi.hi", "xi.lo", "xi.hi")
-  checkEquals(target = name, current = colnames(predict(fit,newX,ci=TRUE,type="lp"))[1:6],msg="predict.gpd: colnames for linear predictor return object")
-  checkEquals(target = name, current = colnames(predict(fit,newX,ci=TRUE,se=TRUE,type="lp"))[1:6],msg="predict.gpd: colnames for linear predictor return object")
+  checkEquals(target = name, current = colnames(predict(fit,newdata=newX,ci=TRUE,type="lp"))[1:6],msg="predict.gpd: colnames for linear predictor return object")
+  checkEquals(target = name, current = colnames(predict(fit,newdata=newX,ci=TRUE,se=TRUE,type="lp"))[1:6],msg="predict.gpd: colnames for linear predictor return object")
 
 # unique
 
   newX <- data.frame(a=c(0,0,0,1,1,1,2,2,2,3,3,3,4,4,4),b=c(-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1)) # checks for duplicates in one and both covariates.
   U <- !duplicated(newX)
-  checkEqualsNumeric(current = predict(fit,newX,type="lp"),
-                     target = predict(fit,newX,unique.=FALSE,type="lp")[U,], msg="predict.gpd: functioning of argument unique, for linear predictor")
-  checkEqualsNumeric(current = predict(fit,newX)[[1]],
-                     target =  predict(fit,newX,unique.=FALSE)[[1]][U,], msg="predict.gpd: functioning of argument unique, for return levels")
+  checkEqualsNumeric(current = predict(fit,newdata=newX,type="lp"),
+                     target = predict(fit,newdata=newX,unique.=FALSE,type="lp")[U,], msg="predict.gpd: functioning of argument unique, for linear predictor")
+  checkEqualsNumeric(current = predict(fit,newdata=newX)[[1]],
+                     target =  predict(fit,newdata=newX,unique.=FALSE)[[1]][U,], msg="predict.gpd: functioning of argument unique, for return levels")
 
 # check standard errors - this takes a while since using bootstrap
     
@@ -541,7 +612,9 @@ test.predict.gpd <- function(){
   fit.p <- predict(fit, newdata=newX,se=TRUE,M=M)
   fit.seest <- unlist(lapply(fit.p,function(x) x[,2]))
 
-  fit.b <- bootgpd(fit,R=1000)
+  o <- options(warn=-1)
+  fit.b <- bootgpd(fit,R=1000, trace=1100)
+  options(o)
   fit.bp <- predict(fit.b,newdata=newX,all=TRUE,M=M)
   fit.seb <- lapply(fit.bp,function(X) apply(X,2,sd))
   fit.seboot <- unlist(fit.seb)
@@ -549,19 +622,25 @@ test.predict.gpd <- function(){
   checkEqualsNumeric(rep(0,length(fit.seboot)), (fit.seboot -  fit.seest) / fit.seest, tol=0.1,msg="predict.gpd: standard error estimate compared with bootstrap standard errors")
 }
 
+################################################################################
+## test.predict.bgpd()
+
 test.predict.bgpd <- function(){
 # no covariates
   u <- 14
   r.fit <- gpd(rain,th=u,method="sim",trace=20000)
 
-  checkEqualsNumeric(target=u,current=predict(r.fit,M=1/r.fit$map$rate)[[1]], msg="predict.bgpd: retreive threshold")
+  checkEqualsNumeric(target=u,current=predict(r.fit,M=1/r.fit$map$rate)[[1]], msg="predict.bgpd: retrieve threshold")
 
   t.fit <- r.fit
   t.fit$map$rate <- 1
   p <- c(0.5,0.9,0.95,0.99,0.999)
   checkEqualsNumeric(target = sapply(p,function(p)mean(qgpd(p,exp(t.fit$param[,1]),t.fit$param[,2],u))),
                      current = unlist(predict(t.fit,M=1/(1-p))),msg="predict.bgpd: ret level estimation")
-
+                
+  checkEquals(target=predict(t.fit,M=1/(1-p)), current=rl(t.fit,M=1/(1-p)),msg="predict.bgpd: predict with type=rl gives same as direct call to rl with default arguments")
+  checkEquals(target=predict(t.fit,type="lp"), current=predict.link(t.fit),msg="predict.bgpd: predict with type=rl gives same as direct call to rl with default arguments")
+  
 # with covariates
 
   n <- 100
@@ -577,7 +656,7 @@ test.predict.bgpd <- function(){
   qbgpd <- function(p,sig,xi,u)sapply(1:dim(sig)[1],function(i) mean(qgpd(p,sig[i,],xi[i,],u)))
 
   checkEqualsNumeric(target = qbgpd(1-1/M,sig,xi,0),
-                     current = predict(fit,M=M)[[1]],msg="predict.bgpd: ret level estimation with covariates")
+                     current = predict(fit,M=M)[[1]][,1],msg="predict.bgpd: ret level estimation with covariates")
 
 # check multiple M
   M <- c(10,50,100,500,1000)
@@ -585,49 +664,128 @@ test.predict.bgpd <- function(){
   temp1 <- sapply(M,function(m)qbgpd(1-1/m,sig,xi,u=0))
   temp2 <- predict(fit,M=M)
 
-  checkEqualsNumeric(target = temp1[,1],current = temp2[[1]],msg="predict.bgpd multiple M")
-  checkEqualsNumeric(target = temp1[,2],current = temp2[[2]],msg="predict.bgpd multiple M")
-  checkEqualsNumeric(target = temp1[,3],current = temp2[[3]],msg="predict.bgpd multiple M")
-  checkEqualsNumeric(target = temp1[,4],current = temp2[[4]],msg="predict.bgpd multiple M")
-  checkEqualsNumeric(target = temp1[,5],current = temp2[[5]],msg="predict.bgpd multiple M")
+  for(i in 1:length(M)){
+    checkEqualsNumeric(target = temp1[,i],current = temp2[[i]][,1],msg="predict.bgpd multiple M")
+  }
 
 # new data
   nx <- 20
   M <- 1000
   newX <- data.frame(a=runif(nx,0,5),b=runif(nx,-0.1,0.5))
-  predict(fit,newX)
 
   sig <- exp(cbind(rep(1,nx),newX[,1]) %*% t(fit$param[,1:2]))
   xi <-      cbind(rep(1,nx),newX[,2]) %*% t(fit$param[,3:4])
-
+  
+  checkEqualsNumeric(target = as.matrix(newX), current = predict(fit,M=M,newdata=newX)[[1]][,2:3],msg="predict.bgpd : ret level estimation with new data, covariates aded correctly to output")
   checkEqualsNumeric(target = qbgpd(1-1/M,sig=sig,xi=xi,u=0),
-                     current = predict(fit,M=M,newdata=newX)[[1]],msg="predict.bgpd : ret level estimation with new data")
+                     current = predict(fit,M=M,newdata=newX)[[1]][,1],msg="predict.bgpd : ret level estimation with new data")
 
-  checkEqualsNumeric(target = c(n,4), current = dim(predict(fit,ci=TRUE)[[1]]), msg="predict.bgpd: dimension of output with ci calculation")
-  checkEqualsNumeric(target = c(n,4), current = dim(predict(fit,se=TRUE,ci=TRUE)[[1]]), msg="predict.bgpd: dimension of output with ci calculation")
+  p <- predict(fit,all=TRUE,newdata=newX)
+  l <- lapply(p,function(l) apply(l,2,mean))
+  m <- unlist(l)
+  r <- predict(fit,newdata=newX)
+  checkEqualsNumeric(target = m,current = r[[1]][,1],msg="predict.bgpd : ret level ests with new data")                   
 
-  checkEquals(target = c("2.5%","50%","97.5%","Mean"), colnames(predict(fit,ci=TRUE)[[1]]), msg="predict.bgpd: colnames of ret level ests with CI estimation")
-  checkEquals(target = c("5%","50%","95%","Mean"), colnames(predict(fit,alpha=0.1,ci=TRUE)[[1]]), msg="predict.bgpd: colnames of ret level ests with CI estimation, alpha=0.1")
-
+  alpha <- c(0.05,0.1)
+  for(a in alpha){
+    l.L <- lapply(p,function(l) apply(l,2,quantile,prob=a/2))
+    l.U <- lapply(p,function(l) apply(l,2,quantile,prob=1-a/2))
+    m.L <- unlist(l.L)
+    m.U <- unlist(l.U)
+    r <- predict(fit,newdata=newX,ci=TRUE,alpha=a)
+    checkEqualsNumeric(target = m.L,current = r[[1]][,3],msg="predict.bgpd : lower conf ints for ret levels with new data")
+    checkEqualsNumeric(target = m.U,current = r[[1]][,4],msg="predict.bgpd : upper conf ints for ret levels with new data")
+  }
+  
 # check linear predictors
+                     
+  p <- predict(fit,type="lp",all=TRUE,newdata=newX)
+  l <- lapply(p,function(l) apply(l,2,mean))
+  m <- matrix(unlist(l),ncol=2,byrow=TRUE)
+  r <- predict(fit,type="lp",newdata=newX)
+  checkEqualsNumeric(target = m,current = r[,1:2],msg="predict.bgpd : linear predictors of parameters with new data")                   
+                   
+  alpha <- c(0.05,0.1)
+  for(a in alpha){
+    l.L <- lapply(p,function(l) apply(l,2,quantile,prob=a/2))
+    l.U <- lapply(p,function(l) apply(l,2,quantile,prob=1-a/2))
+    m.L <- matrix(unlist(l.L),ncol=2,byrow=TRUE)
+    m.U <- matrix(unlist(l.U),ncol=2,byrow=TRUE)                   
+    r <- predict(fit,type="lp",newdata=newX,ci=TRUE,alpha=a)
+    checkEqualsNumeric(target = m.L,current = r[,c(3,7)],msg="predict.bgpd : lower conf ints for linear predictors of parameters with new data")
+    checkEqualsNumeric(target = m.U,current = r[,c(4,8)],msg="predict.bgpd : upper conf ints for linear predictors of parameters with new data")
+  }
+  
+  checkEqualsNumeric(current = predict(fit,newdata=newX,type="lp")[,1:2],
+                     target = cbind(apply(cbind(rep(1,nx),newX[,1]) %*% t(fit$param[,1:2]),1,mean),
+                                    apply(cbind(rep(1,nx),newX[,2]) %*% t(fit$param[,3:4]),1,mean)),
+                     msg = "predict.bgpd: linear predictor estimates")
 
-  checkEqualsNumeric(current = predict(fit,newX,type="lp")[,1:2],
-                    target = cbind(apply(cbind(rep(1,nx),newX[,1]) %*% t(fit$param[,1:2]),1,mean),
-                                   apply(cbind(rep(1,nx),newX[,2]) %*% t(fit$param[,3:4]),1,mean)),
-                    msg = "predict.bgpd: linear predictor estimates")
+# structure of output
 
-  checkEqualsNumeric(target = c(nx,10), dim(predict(fit,newX,ci=TRUE,type="lp")), msg="predict.bgpd: dimension of pinear predictor return object")
+  checkEqualsNumeric(target = c(n,6), current = dim(predict(fit,ci=TRUE)[[1]]), msg="predict.bgpd: dimension of output with ci calculation")
+  checkEqualsNumeric(target = c(n,6), current = dim(predict(fit,se=TRUE,ci=TRUE)[[1]]), msg="predict.bgpd: dimension of output with ci calculation")
 
-  cnames <- c("phi: 2.5%", "phi: 50%", "phi: 97.5%", "phi: Mean", "xi: 2.5%", "xi: 50%", "xi: 97.5%", "xi: Mean")# this specific format assumed by plot.rl.bgpd 
+  checkEquals(target = c("Mean", "50%","2.5%","97.5%","a","b"), colnames(predict(fit,ci=TRUE)[[1]]), msg="predict.bgpd: colnames of ret level ests with CI estimation")
+  checkEquals(target = c("Mean", "50%","5%","95%","a","b"), colnames(predict(fit,alpha=0.1,ci=TRUE)[[1]]), msg="predict.bgpd: colnames of ret level ests with CI estimation, alpha=0.1")
 
-  checkEquals(current = cnames, target = colnames(predict(fit,newX,ci=TRUE,type="lp"))[1:8], msg="predict.bgpd: col names of lin predictors with CI calcs")
-  checkEquals(current = cnames, target = colnames(predict(fit,newX,ci=TRUE,se=TRUE,type="lp"))[1:8], msg="predict.bgpd: col names of lin predictors with CI+SE calcs")
+  checkEqualsNumeric(target = c(nx,10), dim(predict(fit,newdata=newX,ci=TRUE,type="lp")), msg="predict.bgpd: dimension of linear predictor return object")
+
+  cnames <- c("phi: Mean", "phi: 50%", "phi: 2.5%", "phi: 97.5%", "xi: Mean", "xi: 50%", "xi: 2.5%", "xi: 97.5%")# this specific format assumed by plot.rl.bgpd and plot.predict.link.bgpd
+
+  checkEquals(current = cnames, target = colnames(predict(fit,newdata=newX,ci=TRUE,type="lp"))[1:8], msg="predict.bgpd: col names of lin predictors with CI calcs")
+  checkEquals(current = cnames, target = colnames(predict(fit,newdata=newX,ci=TRUE,se=TRUE,type="lp"))[1:8], msg="predict.bgpd: col names of lin predictors with CI+SE calcs")
 
 # unique
   newX <- data.frame(a=c(0,0,0,1,1,1,2,2,2,3,3,3,4,4,4),b=c(-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1,-.1,.1,.1))
 
-  checkEqualsNumeric(current = predict(fit,newX)[[1]], target = unique(predict(fit,newX,unique.=FALSE)[[1]]),msg="predict.bgpd: unique functioning for ret level ests")
-  checkEqualsNumeric(current = predict(fit,newX,type="lp")[,], target = unique(predict(fit,newX,unique.=FALSE,type="lp")[,]),msg="predict.bgpd: unique functioning for lin pred ests")
+  checkEqualsNumeric(current = predict(fit,newdata=newX)[[1]], target = unique(predict(fit,newdata=newX,unique.=FALSE)[[1]]),msg="predict.bgpd: unique functioning for ret level ests")
+  checkEqualsNumeric(current = predict(fit,newdata=newX,type="lp")[,], target = unique(predict(fit,newdata=newX,unique.=FALSE,type="lp")[,]),msg="predict.bgpd: unique functioning for lin pred ests")
 
 }
 
+################################################################################
+## test.predict.bootgpd()
+
+test.predict.bootgpd <- function(){
+# functionality all tested already in test.predict.bgpd, so just check output of correct format.
+
+  n <- 1000
+  nx <- 9
+  R <- 10
+  nm <- 20
+  
+  X <- data.frame(a = rnorm(n),b = runif(n,-0.3,0.3))
+  Y <- rgpd(n,exp(X[,1]),X[,2])
+  X$Y <- Y
+  fit <- gpd(Y,data=X,phi=~a,xi=~b,th=0)
+  o <- options(warn=-1)
+  boot <- bootgpd(fit,R=R,trace=100)
+  options(o)
+  
+  newX <- data.frame(a=runif(nx,0,5),b=runif(nx,-0.1,0.5))  
+  from <- 10; to <- 500
+  M <- seq(from,to,length=nm)
+  pred <- predict(boot,newdata=newX,M=M,ci=TRUE)
+  
+  checkEquals(target=predict(boot), current=rl(boot),msg="predict.bootgpd: predict with type=rl gives same as direct call to rl with default arguments")
+  checkEquals(target=predict(boot,type="lp"), current=predict.link(boot),msg="predict.bootgpd: predict with type=rl gives same as direct call to rl with default arguments")
+  
+  checkEqualsNumeric(target=nm,current=length(pred),msg="predict.bootgpd: output length")
+  checkEquals(target=paste("M.",from,sep=""),current=names(pred)[1],msg="predict.bootgpd: names of output")
+  checkEquals(target=paste("M.",to,sep=""),current=names(pred)[nm],msg="predict.bootgpd: names of output")
+  
+  cnames <- c( "Mean","50%","2.5%","97.5%",names(X)[1:2])
+  checkEquals(target=cnames,current=colnames(pred[[1]]),msg="predict.bootgpd: colnames")
+  
+  checkEqualsNumeric(target=c(nx,6),current=dim(pred[[1]]),msg="predict.bootgpd: dimension")
+  for(i in 1:nm){
+    checkEqualsNumeric(target=newX[,1],current=pred[[i]][,5],msg="predict.bootgpd: covariates inoutput")
+    checkEqualsNumeric(target=newX[,2],current=pred[[i]][,6],msg="predict.bootgpd: covariates inoutput")
+  }
+  
+  par(mfrow=n2mfrow(nx))
+  plot(pred,sameAxes=FALSE,type="median",main="Bootstrap median rl")
+  plot(pred,sameAxes=FALSE,type="mean",main="Bootstrap mean rl")
+  
+}
