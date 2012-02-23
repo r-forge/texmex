@@ -36,8 +36,6 @@ gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
 \method{print}{bgpd}(x, print.seed=FALSE, ...)
 \method{summary}{bgpd}(object, ...)
 \method{plot}{bgpd}(x, which.plots=1:3, density.adjust=2, print.seed=FALSE, ...)
-\method{predict}{gpd}(object, newdata=NULL, type=c("return level", "link"), se.fit=FALSE, ci.fit=FALSE, M=1000, alpha=.050)
-\method{rl}{gpd}(object, M=1000, newdata)
 \method{coef}{bgpd}(object, ...)
 \method{coefficients}{bgpd}(object, ...)
 \method{print}{summary.gpd}(x, digits=3, ...)
@@ -126,8 +124,6 @@ gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
   \item{density.adjust}{Passed into \code{density}. Controls the amount of
                      smoothing of the kernel density estimate. Defaults to
                      \code{density.adjust=2}.}
-  \item{M}{In \code{predict} and \code{rl}, the M-observation return level is computed. Defaults
-           to \code{M = 1000}.}
   \item{...}{Further arguments to be passed to methods.}
 }
 \details{
@@ -155,7 +151,7 @@ gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
   diagnostic plots for the fitted generalized Pareto model. These differ 
   depending on whether or not there are covariates in the model.  If there 
   are no covariates then the diagnostic plots are PP- and QQ-plots, a 
-  return level plot and a histogram of the data with superimposed generalized 
+  return level plot (produced by \code{plotrl.gpd}) and a histogram of the data with superimposed generalized 
   Pareto density estimate.  These are all calculated using the data on 
   the original scale. If there are covariates in the model then the 
   diagnostics consist of PP- and QQ- plots calculated by using the model 
@@ -169,8 +165,8 @@ gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
   When \code{method = "simulate"} the \code{plot} function produces 
   diagnostic plots for the Markov chains used to simulate from the posterior 
   distributions for the model parameters.  If the chains have converged on 
-  the posterior distributions, the trace plots should look like `fat hairy 
-  caterpillars' and their cumulative means should converge rapidly. Moreover, 
+  the posterior distributions, the trace plots should look like "fat hairy 
+  caterpillars" and their cumulative means should converge rapidly. Moreover, 
   the autocorrelation functions should converge quickly to zero.
 
   When \code{method = "simulate"} the \code{print} and \code{summary} functions 
@@ -241,6 +237,9 @@ gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
   that is reasonably high (around 40\% when there are no covariates, lower
   otherwise). 
   }
+  
+\seealso{ \code{\link{rl.gpd}}, \code{\link{predict.gpd}}}
+
 \author{Janet E. Heffernan, Harry Southworth.   Some of the internal code is based on the \code{gpd.fit} function
   in the \code{ismev} package and is due to Stuart Coles.}
 
