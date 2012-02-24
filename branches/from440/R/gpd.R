@@ -1,9 +1,18 @@
-gpd <- 
+gpd <- function(y, data, ...){
+  if (!missing(data)) {
+      y <- ifelse(deparse(substitute(y))== "substitute(y)", deparse(y),deparse(substitute(y)))
+      y <- formula(paste(y, "~ 1"))
+      y <- model.response(model.frame(y, data=data))
+  } 
+  UseMethod("gpd",y)
+}
+
+gpd.default <- 
 function (y, data, th, qu, phi = ~1, xi = ~1,
           penalty = "gaussian", prior = "gaussian", method = "optimize",
 		      cov="observed",
           start = NULL, priorParameters = NULL, maxit = 10000, trace=NULL,
-          iter = 10500, burn=500, thin = 1, jump.cov, jump.const, verbose=TRUE) {
+          iter = 10500, burn=500, thin = 1, jump.cov, jump.const, verbose=TRUE,...) {
 
     theCall <- match.call()
 
@@ -135,7 +144,7 @@ function (y, data, th, qu, phi = ~1, xi = ~1,
 
     ################################## Do the optimization....
 
-    o <- gpd.fit(y=y, th=th, X.phi=X.phi, X.xi=X.xi, penalty=prior, start=start, 
+    o <- gpdFit(y=y, th=th, X.phi=X.phi, X.xi=X.xi, penalty=prior, start=start, 
                  hessian = cov == "numeric",
                  priorParameters = priorParameters, maxit = maxit, trace = otrace)
 

@@ -1,5 +1,6 @@
 \name{gpd}
 \alias{gpd}
+\alias{gpd.default}
 \alias{print.gpd}
 \alias{show.gpd}
 \alias{summary.gpd}
@@ -22,10 +23,11 @@
 Pareto distribution, possibly with explanatory variables.
 }
 \usage{
-gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
+gpd(y, data, ...)
+\method{gpd}{default}(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
     prior = "gaussian", method = "optimize", cov="observed", start = NULL, priorParameters = NULL,
     maxit = 10000, trace = NULL,
-    iter = 10500, burn = 500, thin = 1, jump.cov, jump.const, verbose = TRUE)
+    iter = 10500, burn = 500, thin = 1, jump.cov, jump.const, verbose = TRUE,...)
 \method{print}{gpd}(x, digits=max(3, getOption("digits") - 3), ...)
 \method{show}{gpd}(x, digits=max(3, getOption("digits") - 3), ...)
 \method{summary}{gpd}(object, nsim=1000, alpha=0.05, ...)
@@ -136,7 +138,7 @@ gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
   
   Working with the log of the scale parameter improves the
   stability of computations, making  a quadratic penalty more 
-  appropriate and enabling the inclusion of covariates in the model for the scale parameter, which must remain positive.  We therefore work with phi=log(xi).  A quadratic penalty can be 
+  appropriate and enabling the inclusion of covariates in the model for the scale parameter, which must remain positive.  We therefore work with \eqn{\phi}=log(\eqn{\sigma}).  All specification of priors or penalty functions refer to \eqn{\phi} rather than \eqn{\sigma}.  A quadratic penalty can be 
   thought of as a Gaussian prior distribution, whence the terminology of the function.
   
   Parameters of the GPD fitted to excesses above threshold \code{th} are estimated by using penalized maximum likelihood (\code{method="optimize"}), or by simulating from the posterior distribution of the model parameters using a Metropolis algorithm (\code{method="simulate"}).  In the latter case, \code{start} is used as a starting value for the Metropolis algorithm; in its absence, the maximum penalized likelhood point estimates are computed and used.
@@ -238,7 +240,7 @@ gpd(y, data, th, qu, phi = ~1, xi = ~1, penalty = "gaussian",
   otherwise). 
   }
   
-\seealso{ \code{\link{rl.gpd}}, \code{\link{predict.gpd}}}
+\seealso{ \code{\link{rl.gpd}}, \code{\link{predict.gpd}}, \code{\link{gpd.declustered}}.}
 
 \author{Janet E. Heffernan, Harry Southworth.   Some of the internal code is based on the \code{gpd.fit} function
   in the \code{ismev} package and is due to Stuart Coles.}

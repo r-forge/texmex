@@ -126,7 +126,7 @@ linearPredictors <- function(object, newdata = NULL, se.fit = FALSE, ci.fit = FA
     UseMethod("linearPredictors")
 }
 
-gpd.delta <- function(A, K){
+gpdDelta <- function(A, K){
    # This is not exact if a prior (penalty) function is used, but
    # the CI is approximate anyway.
         
@@ -165,7 +165,7 @@ rl.gpd <- function(object, M=1000, newdata=NULL, se.fit=FALSE, ci.fit=FALSE,
                   u=object$threshold, theta=object$rate, phi=co[,1], xi=co[,2])
 
     getse <- function(o, co, M){
-        dxm <- lapply(split(co, 1:nrow(co)), gpd.delta, K=M)
+        dxm <- lapply(split(co, 1:nrow(co)), gpdDelta, K=M)
 
         V <- lapply(1:nrow(co),
                     function(i, x, rate, n){
